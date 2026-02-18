@@ -1,0 +1,68 @@
+// Workspace serialization and deserialization with migration support
+
+const CURRENT_VERSION = 2;
+
+export function serializeWorkspace(plotStore, appStore) {
+    const plotState = plotStore;
+    const appState = appStore;
+
+    return {
+        version: CURRENT_VERSION,
+        rootPath: appState.rootPath,
+        activePlotId: plotState.activePlotId,
+        plotOrder: plotState.plotOrder,
+        plots: Object.fromEntries(
+            plotState.plotOrder.map(id => {
+                const plot = plotState.plots[id];
+                return [id, {
+                    id: plot.id,
+                    name: plot.name,
+                    expressions: plot.expressions,
+                    startDate: plot.startDate,
+                    endDate: plot.endDate,
+                    plotType: plot.plotType,
+                    seriesConfig: plot.seriesConfig,
+                }];
+            })
+        ),
+    };
+}
+
+// Migration chain
+function migrateV1toV2(data) {
+    // V2 adds plotType per-plot (V1 may not have it)
+    for (const id of Object.keys(data.plots || {})) {
+        if (!data.plots[id].plotType) {
+            data.plots[id].plotType = 'timeseries';
+        }
+    }
+    data.version = 2;
+    return data;
+}
+
+const migrations = {
+    1: migrateV1toV2,
+};
+
+export function deserializeWorkspace(data) {
+    if (!data || !data.version) {
+        throw new Error('Invalid workspace file format');
+    }
+
+    // Apply migrations in sequence
+    let current = data;
+    while (current.version < CURRENT_VERSION) {
+        const migrate = migrations[current.version];
+        if (!migrate) {
+            throw new Error(`No migration path from version ${current.version}`);
+        }
+        current = migrate(current);
+    }
+
+    return {
+        rootPath: current.rootPath,
+        activePlotId: current.activePlotId,
+        plotOrder: current.plotOrder,
+        plots: current.plots,
+    };
+}

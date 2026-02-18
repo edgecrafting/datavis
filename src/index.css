@@ -1,0 +1,795 @@
+:root {
+  /* System Colors - Windows 2000/XP */
+  --bg-color: #c0c0c0;
+  --text-color: #000000;
+  --title-bg-active: #000080;
+  --title-text-active: #ffffff;
+  --title-bg-inactive: #808080;
+  --title-text-inactive: #c0c0c0;
+  --highlight: #ffffff;
+  --shadow: #808080;
+  --dark-shadow: #404040;
+  --button-face: #c0c0c0;
+  --window-frame: #c0c0c0;
+  --input-bg: #ffffff;
+
+  /* Font */
+  --font-family: 'Tahoma', 'Segoe UI', 'Geneva', sans-serif;
+  --font-size: 11px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Main App Shell */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-color);
+}
+
+/* ============================================
+   MENU BAR - Windows 2000 Style
+   ============================================ */
+.menu-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 20px;
+  background: var(--bg-color);
+  border-bottom: 1px solid var(--shadow);
+  padding: 0 2px;
+  position: relative;
+  z-index: 1000;
+}
+
+.menu-bar-item {
+  padding: 2px 8px;
+  cursor: default;
+  font-size: 11px;
+  line-height: 14px;
+  position: relative;
+}
+
+.menu-bar-item:hover,
+.menu-bar-item.active {
+  background: var(--title-bg-active);
+  color: var(--title-text-active);
+}
+
+/* Menu Dropdown */
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--bg-color);
+  border-top: 1px solid var(--highlight);
+  border-left: 1px solid var(--highlight);
+  border-right: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--dark-shadow);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  padding: 2px 0;
+}
+
+.menu-dropdown.submenu {
+  position: absolute;
+  top: -2px;
+  left: 100%;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  cursor: default;
+  font-size: 11px;
+  height: 20px;
+  white-space: nowrap;
+  position: relative;
+}
+
+.menu-item:hover:not(.disabled) {
+  background: var(--title-bg-active);
+  color: var(--title-text-active);
+}
+
+.menu-item.disabled {
+  color: var(--shadow);
+}
+
+.menu-check {
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.menu-label {
+  flex: 1;
+}
+
+.menu-shortcut {
+  margin-left: 24px;
+  color: var(--shadow);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.menu-item:hover:not(.disabled) .menu-shortcut {
+  color: var(--title-text-inactive);
+}
+
+.menu-arrow {
+  margin-left: 8px;
+  font-size: 8px;
+  flex-shrink: 0;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--shadow);
+  border-bottom: 1px solid var(--highlight);
+}
+
+/* ============================================
+   TOOLBAR - Two rows
+   ============================================ */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-color);
+  border-bottom: 1px solid var(--shadow);
+  padding: 2px;
+}
+
+.toolbar-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+}
+
+.toolbar-button {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-color);
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--text-color);
+}
+
+.toolbar-button:hover {
+  border-top: 1px solid var(--highlight);
+  border-left: 1px solid var(--highlight);
+  border-right: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--dark-shadow);
+}
+
+.toolbar-button:active {
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--shadow);
+  margin: 0 4px;
+}
+
+/* ============================================
+   PLOT TABS
+   ============================================ */
+.plot-tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  height: 22px;
+  background: var(--bg-color);
+  padding: 0 2px;
+  border-bottom: 1px solid var(--shadow);
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 1px;
+}
+
+.plot-tabs::-webkit-scrollbar {
+  height: 0;
+}
+
+.plot-tab {
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: default;
+  background: var(--bg-color);
+  border-top: 1px solid var(--shadow);
+  border-left: 1px solid var(--shadow);
+  border-right: 1px solid var(--dark-shadow);
+  height: 18px;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.plot-tab.active {
+  background: var(--input-bg);
+  border-top: 1px solid var(--highlight);
+  border-left: 1px solid var(--highlight);
+  border-right: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--input-bg);
+  height: 20px;
+  margin-bottom: -1px;
+}
+
+.plot-tab-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plot-tab-close {
+  font-size: 12px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.plot-tab-close:hover {
+  background: #e0e0e0;
+}
+
+.plot-tab-edit {
+  width: 80px;
+  border: 1px solid var(--dark-shadow);
+  font-size: 11px;
+  font-family: var(--font-family);
+  padding: 0 2px;
+  height: 14px;
+}
+
+.add-tab {
+  font-size: 14px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+}
+
+.add-tab:hover {
+  background: #e0e0e0;
+}
+
+/* ============================================
+   MAIN CONTENT AREA
+   ============================================ */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  margin: 2px;
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+}
+
+/* Left Panel - Tree View */
+.tree-panel {
+  width: 200px;
+  min-width: 150px;
+  background: var(--input-bg);
+  overflow: auto;
+  border-right: 1px solid var(--shadow);
+}
+
+/* Right Panel - Chart + Expression */
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Chart Area */
+.chart-area {
+  flex: 1;
+  background: var(--input-bg);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ============================================
+   EXPRESSION PANEL
+   ============================================ */
+.expression-panel {
+  height: 120px;
+  background: var(--bg-color);
+  border-top: 1px solid var(--highlight);
+  display: flex;
+  flex-direction: column;
+  padding: 2px;
+}
+
+.expression-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.expression-input {
+  height: 18px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-family: var(--font-family);
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+  background: var(--input-bg);
+  outline: none;
+}
+
+.expression-input.small {
+  width: 80px;
+}
+
+.expression-input.title {
+  flex: 1;
+}
+
+.expression-editor-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.expression-line-indicators {
+  width: 16px;
+  background: var(--bg-color);
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--highlight);
+  display: flex;
+  flex-direction: column;
+  padding-top: 4px;
+}
+
+.line-indicator {
+  height: 16px;
+  font-size: 9px;
+  font-weight: bold;
+  text-align: center;
+  color: transparent;
+  line-height: 16px;
+}
+
+.line-indicator.on-right {
+  color: #ff0000;
+  background: #ffe0e0;
+}
+
+.expression-editor {
+  flex: 1;
+  background: var(--input-bg);
+  border-top: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+  overflow: hidden;
+}
+
+.expression-textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  padding: 4px;
+}
+
+/* GO Button */
+.go-button {
+  background: #008000;
+  color: white;
+  font-weight: bold;
+  border-top: 1px solid #00a000;
+  border-left: 1px solid #00a000;
+  border-right: 1px solid #004000;
+  border-bottom: 1px solid #004000;
+}
+
+.go-button:hover {
+  background: #00a000;
+}
+
+.go-button:active {
+  border-top: 1px solid #004000;
+  border-left: 1px solid #004000;
+  border-right: 1px solid #00a000;
+  border-bottom: 1px solid #00a000;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.win-button {
+  height: 20px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-family: var(--font-family);
+  background: var(--bg-color);
+  border-top: 1px solid var(--highlight);
+  border-left: 1px solid var(--highlight);
+  border-right: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--dark-shadow);
+  cursor: pointer;
+}
+
+.win-button:active {
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+}
+
+.win-button:disabled {
+  color: var(--shadow);
+  cursor: default;
+}
+
+/* ============================================
+   STATS TABLE
+   ============================================ */
+.stats-table-container {
+  height: 80px;
+  min-height: 50px;
+  overflow: auto;
+  border-top: 1px solid var(--dark-shadow);
+  background: var(--input-bg);
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  font-family: var(--font-family);
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 1px 6px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.stats-header {
+  background: var(--bg-color);
+  font-weight: bold;
+  text-align: right;
+  position: sticky;
+  top: 0;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.stats-name {
+  text-align: left !important;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-row:hover {
+  background: #e8e8ff;
+}
+
+.stats-row.disabled {
+  opacity: 0.4;
+}
+
+.stats-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #999;
+}
+
+/* ============================================
+   STATUS BAR
+   ============================================ */
+.status-bar {
+  display: flex;
+  flex-direction: row;
+  height: 22px;
+  background: var(--bg-color);
+  border-top: 1px solid var(--highlight);
+  padding: 2px;
+  gap: 2px;
+}
+
+.status-segment {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 11px;
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+  background: var(--bg-color);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.status-segment.flex {
+  flex: 1;
+}
+
+/* ============================================
+   TREE VIEW
+   ============================================ */
+.tree-node {
+  display: flex;
+  align-items: center;
+  padding: 1px 2px;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.tree-node:hover {
+  background: #e0e0e0;
+}
+
+.tree-node.selected {
+  background: var(--title-bg-active);
+  color: var(--title-text-active);
+}
+
+.tree-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.tree-toggle {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tree-label {
+  font-size: 11px;
+}
+
+/* ============================================
+   DIALOG SYSTEM
+   ============================================ */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.dialog-window {
+  background: var(--bg-color);
+  border-top: 2px solid var(--highlight);
+  border-left: 2px solid var(--highlight);
+  border-right: 2px solid var(--dark-shadow);
+  border-bottom: 2px solid var(--dark-shadow);
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.4);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 20px;
+  background: var(--title-bg-active);
+  color: var(--title-text-active);
+  padding: 0 2px 0 6px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.dialog-title-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dialog-close-btn {
+  width: 16px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-color);
+  border-top: 1px solid var(--highlight);
+  border-left: 1px solid var(--highlight);
+  border-right: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--dark-shadow);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-color);
+  padding: 0;
+}
+
+.dialog-close-btn:active {
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+}
+
+.dialog-body {
+  padding: 8px;
+  flex: 1;
+  overflow: auto;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--shadow);
+}
+
+/* ============================================
+   COLOR PICKER
+   ============================================ */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+}
+
+.color-cell {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--bg-color);
+  cursor: pointer;
+}
+
+.color-cell:hover {
+  border-color: var(--dark-shadow);
+}
+
+.color-cell.selected {
+  border-color: var(--text-color);
+  outline: 1px solid var(--highlight);
+}
+
+/* ============================================
+   DATA VIEWER / TABLE STYLES
+   ============================================ */
+.data-viewer-scroll {
+  max-height: 300px;
+  overflow: auto;
+  border-top: 1px solid var(--dark-shadow);
+  border-left: 1px solid var(--dark-shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+}
+
+.data-viewer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.data-viewer-table th {
+  background: var(--bg-color);
+  padding: 2px 6px;
+  text-align: left;
+  font-weight: bold;
+  border-bottom: 1px solid var(--shadow);
+  position: sticky;
+  top: 0;
+  font-family: var(--font-family);
+  white-space: nowrap;
+}
+
+.data-viewer-table td {
+  padding: 1px 6px;
+  border-bottom: 1px solid #e8e8e8;
+  white-space: nowrap;
+}
+
+.data-viewer-table tr:hover {
+  background: #e8e8ff;
+}
+
+.data-viewer-table .selected-row,
+.data-viewer-table .selected-row td {
+  background: var(--title-bg-active);
+  color: var(--title-text-active);
+}
+
+/* ============================================
+   SCROLLBARS - Windows Style
+   ============================================ */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e0e0e0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-color);
+  border-top: 1px solid var(--highlight);
+  border-left: 1px solid var(--highlight);
+  border-right: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--dark-shadow);
+}
+
+::-webkit-scrollbar-button {
+  width: 16px;
+  height: 16px;
+  background: var(--bg-color);
+  border-top: 1px solid var(--highlight);
+  border-left: 1px solid var(--highlight);
+  border-right: 1px solid var(--dark-shadow);
+  border-bottom: 1px solid var(--dark-shadow);
+}
