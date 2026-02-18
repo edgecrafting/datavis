@@ -37,6 +37,34 @@ export function parseDate(dateStr) {
 }
 
 /**
+ * Parse a user date input: relative (-1y, -6m, -2w, -30d, ytd, mtd, today)
+ * or absolute (YYYY-MM-DD, 10jan20, etc.) into a Date object.
+ */
+export function parseDateInput(str) {
+    if (!str || !str.trim()) return null;
+    const s = str.trim().toLowerCase();
+    const now = new Date();
+
+    if (s === 'today' || s === 'now') return now;
+    if (s === 'ytd') return new Date(now.getFullYear(), 0, 1);
+    if (s === 'mtd') return new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const relMatch = s.match(/^-(\d+)(y|m|w|d)$/);
+    if (relMatch) {
+        const n = parseInt(relMatch[1]);
+        const unit = relMatch[2];
+        const d = new Date(now);
+        if (unit === 'y') d.setFullYear(d.getFullYear() - n);
+        else if (unit === 'm') d.setMonth(d.getMonth() - n);
+        else if (unit === 'w') d.setDate(d.getDate() - n * 7);
+        else if (unit === 'd') d.setDate(d.getDate() - n);
+        return d;
+    }
+
+    return parseDate(str);
+}
+
+/**
  * Normalize any date string to YYYY-MM-DD format for consistent comparison.
  * Returns original string if parsing fails.
  */

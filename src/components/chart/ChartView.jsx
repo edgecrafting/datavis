@@ -4,6 +4,7 @@ import { useDataStore } from '../../store/dataStore.js';
 import { useAppStore } from '../../store/appStore.js';
 import { usePlotStore } from '../../store/plotStore.js';
 import { getSeriesColor } from '../../services/chart/colors.js';
+import { parseDateInput } from '../../services/dates/normalize.js';
 
 function formatDateMarker(dateStr) {
     if (!dateStr) return '';
@@ -292,46 +293,6 @@ export default function ChartView() {
             )}
         </div>
     );
-}
-
-/**
- * Parse a date string: relative (-1y, -6m, ytd, etc.) or absolute (YYYY-MM-DD, 10jan20, etc.)
- */
-function parseDateInput(str) {
-    if (!str || !str.trim()) return null;
-    const s = str.trim().toLowerCase();
-    const now = new Date();
-
-    if (s === 'today' || s === 'now') return now;
-    if (s === 'ytd') return new Date(now.getFullYear(), 0, 1);
-    if (s === 'mtd') return new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const relMatch = s.match(/^-(\d+)(y|m|w|d)$/);
-    if (relMatch) {
-        const n = parseInt(relMatch[1]);
-        const unit = relMatch[2];
-        const d = new Date(now);
-        if (unit === 'y') d.setFullYear(d.getFullYear() - n);
-        else if (unit === 'm') d.setMonth(d.getMonth() - n);
-        else if (unit === 'w') d.setDate(d.getDate() - n * 7);
-        else if (unit === 'd') d.setDate(d.getDate() - n);
-        return d;
-    }
-
-    const dmmyMatch = s.match(/^(\d{1,2})([a-z]{3})(\d{2,4})$/);
-    if (dmmyMatch) {
-        const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
-        const mon = months[dmmyMatch[2]];
-        if (mon !== undefined) {
-            let yr = parseInt(dmmyMatch[3]);
-            if (yr < 100) yr += yr > 50 ? 1900 : 2000;
-            return new Date(yr, mon, parseInt(dmmyMatch[1]));
-        }
-    }
-
-    const d = new Date(str.trim());
-    if (!isNaN(d.getTime())) return d;
-    return null;
 }
 
 function filterByDateRange(dates, values, startDateStr, endDateStr) {

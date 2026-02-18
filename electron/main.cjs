@@ -44,22 +44,25 @@ const createWindow = () => {
         title: 'PlotTool',
     });
 
-    // 4B: Content Security Policy
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        callback({
-            responseHeaders: {
-                ...details.responseHeaders,
-                'Content-Security-Policy': [
-                    "default-src 'self'; " +
-                    "script-src 'self' 'unsafe-eval'; " +
-                    "style-src 'self' 'unsafe-inline'; " +
-                    "img-src 'self' data: blob:; " +
-                    "font-src 'self'; " +
-                    "connect-src 'self' ws://localhost:* http://localhost:*"
-                ]
-            }
+    // 4B: Content Security Policy (production only — Vite dev server needs inline scripts)
+    const isDev = !!process.env.ELECTRON_START_URL || !app.isPackaged;
+    if (!isDev) {
+        session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+            callback({
+                responseHeaders: {
+                    ...details.responseHeaders,
+                    'Content-Security-Policy': [
+                        "default-src 'self'; " +
+                        "script-src 'self' 'unsafe-eval'; " +
+                        "style-src 'self' 'unsafe-inline'; " +
+                        "img-src 'self' data: blob:; " +
+                        "font-src 'self'; " +
+                        "connect-src 'self'"
+                    ]
+                }
+            });
         });
-    });
+    }
 
     const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5190';
     mainWindow.loadURL(startUrl);

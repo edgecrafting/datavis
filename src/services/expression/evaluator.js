@@ -121,6 +121,17 @@ async function evalNode(node, context) {
 
         case 'FunctionCall': {
             const fnName = node.name;
+
+            // Special async function: csv("path") — load a CSV file by path
+            if (fnName.toLowerCase() === 'csv') {
+                if (node.args.length < 1) throw new Error('csv() requires a file path argument');
+                const pathArg = await evalNode(node.args[0], context);
+                const filePath = pathArg?._isString ? pathArg.value : String(pathArg?.value ?? pathArg);
+                const series = await loadCsvSeries(filePath);
+                useDataStore.getState().addToCache(series.name, series);
+                return series;
+            }
+
             const fn = registry.get(fnName);
 
             // Evaluate all arguments (may be async due to series loading)

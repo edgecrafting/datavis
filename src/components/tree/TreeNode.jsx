@@ -39,17 +39,19 @@ const TreeNode = ({ node, level = 0 }) => {
     const handleDoubleClick = async (e) => {
         e.stopPropagation();
         if (!node.isDirectory) {
-            // Insert the file name into the expression via store action
+            // Insert the ticker name (without .csv) into the expression
             const fileName = node.name;
-            usePlotStore.getState().insertText(fileName);
+            const displayName = fileName.toLowerCase().endsWith('.csv') ? fileName.slice(0, -4) : fileName;
+            usePlotStore.getState().insertText(displayName);
 
             // Also pre-cache the data for fast evaluation
             try {
                 const data = await loadCsvSeries(node.path);
                 const { addToCache } = useDataStore.getState();
                 addToCache(data.name, data);
-                // Also cache by filename for direct filename references
+                // Also cache by filename and display name for direct references
                 addToCache(fileName, data);
+                if (displayName !== fileName) addToCache(displayName, data);
             } catch (err) {
                 console.error('Failed to pre-cache:', err);
             }
@@ -86,8 +88,12 @@ const TreeNode = ({ node, level = 0 }) => {
                     )}
                 </div>
 
-                {/* Label */}
-                <span className="tree-label">{node.name}</span>
+                {/* Label — strip .csv extension for cleaner display */}
+                <span className="tree-label">
+                    {!node.isDirectory && node.name.toLowerCase().endsWith('.csv')
+                        ? node.name.slice(0, -4)
+                        : node.name}
+                </span>
             </div>
 
             {isExpanded && (

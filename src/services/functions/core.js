@@ -1,12 +1,33 @@
 import { registerFunction, registry } from './registry';
 import { withStats } from '../stats/withStats.js';
+import { useAppStore } from '../../store/appStore.js';
+import { parseDateInput, normalizeDate } from '../dates/normalize.js';
 
 // Core Financial Functions
 
-// Ind: Rebase to 1.0 at start (Ratio)
+// Helper: find the rebase value — uses the app's applied Start date if set
+function findRebaseValue(series) {
+    const startDateStr = useAppStore.getState().appliedStartDate;
+    if (startDateStr) {
+        // Resolve relative dates like "-5y", "ytd", "10jan20" to YYYY-MM-DD
+        const parsed = parseDateInput(startDateStr);
+        if (parsed) {
+            const target = normalizeDate(parsed.toISOString().slice(0, 10));
+            for (let i = 0; i < series.dates.length; i++) {
+                if (series.dates[i] >= target && series.values[i] !== null && !isNaN(series.values[i])) {
+                    return series.values[i];
+                }
+            }
+        }
+    }
+    // Fallback: first non-null value
+    return series.values.find(v => v !== null && !isNaN(v));
+}
+
+// Ind: Rebase to 1.0 from the applied Start date (or first value if no Start set)
 registerFunction('ind', (series) => {
     if (!series || series.values.length === 0) return series;
-    const startVal = series.values.find(v => v !== null && !isNaN(v));
+    const startVal = findRebaseValue(series);
     if (!startVal || startVal === 0) return series;
 
     return withStats({
@@ -14,12 +35,12 @@ registerFunction('ind', (series) => {
         name: `ind(${series.name})`,
         values: series.values.map(v => v !== null ? v / startVal : null)
     });
-}, "Rebase series to start at 1.0");
+}, "Rebase to 1.0 from Start date (set in toolbar)");
 
-// Indd: Rebase to 0 at start (Difference)
+// Indd: Rebase to 0 from the applied Start date (or first value if no Start set)
 registerFunction('indd', (series) => {
     if (!series || series.values.length === 0) return series;
-    const startVal = series.values.find(v => v !== null && !isNaN(v));
+    const startVal = findRebaseValue(series);
     if (startVal === null || startVal === undefined || isNaN(startVal)) return series;
 
     return withStats({
@@ -27,7 +48,7 @@ registerFunction('indd', (series) => {
         name: `indd(${series.name})`,
         values: series.values.map(v => v !== null ? v - startVal : null)
     });
-}, "Rebase series to start at 0.0");
+}, "Rebase to 0 from Start date (set in toolbar)");
 
 // Moving Average
 registerFunction('ma', (series, period = 20) => {

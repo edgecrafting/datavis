@@ -1,16 +1,19 @@
 import { create } from 'zustand';
 
+// Safe localStorage access (supports test environments without DOM)
+const ls = typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+
 // Load recent files from localStorage
 let savedRecentFiles = [];
 try {
-    const stored = localStorage.getItem('recentFiles');
+    const stored = ls.getItem('recentFiles');
     if (stored) savedRecentFiles = JSON.parse(stored);
 } catch (e) { /* ignore */ }
 
 export const useAppStore = create((set) => ({
     // Default path to BBGDB
-    rootPath: localStorage.getItem('lastRootPath') || 'C:\\Users\\haibi\\Python\\BBGDB',
-    currentPath: localStorage.getItem('lastRootPath') || 'C:\\Users\\haibi\\Python\\BBGDB',
+    rootPath: ls.getItem('lastRootPath') || 'C:\\Users\\haibi\\Python\\BBGDB',
+    currentPath: ls.getItem('lastRootPath') || 'C:\\Users\\haibi\\Python\\BBGDB',
 
     // Selection state
     selectedFile: null,
@@ -48,7 +51,7 @@ export const useAppStore = create((set) => ({
     // Statistics preferences
     useSampleVariance: (() => {
         try {
-            const v = localStorage.getItem('useSampleVariance');
+            const v = ls.getItem('useSampleVariance');
             return v === null ? true : JSON.parse(v);
         } catch { return true; }
     })(),
@@ -62,7 +65,7 @@ export const useAppStore = create((set) => ({
 
     // Actions
     setRootPath: (path) => {
-        localStorage.setItem('lastRootPath', path);
+        ls.setItem('lastRootPath', path);
         set({ rootPath: path, currentPath: path });
     },
     setCurrentPath: (path) => set({ currentPath: path }),

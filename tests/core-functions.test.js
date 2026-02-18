@@ -1,8 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { registry } from '../src/services/functions/registry.js';
-import '../src/services/functions/core.js';
-
-// Mock localStorage
+// Mock localStorage before any imports (appStore reads it at module level)
 globalThis.localStorage = {
     store: {},
     getItem(key) { return this.store[key] ?? null; },
@@ -10,6 +6,11 @@ globalThis.localStorage = {
     removeItem(key) { delete this.store[key]; },
     clear() { this.store = {}; },
 };
+
+import { describe, it, expect, beforeAll } from 'vitest';
+import { registry } from '../src/services/functions/registry.js';
+import { useAppStore } from '../src/store/appStore.js';
+import '../src/services/functions/core.js';
 
 const makeSeries = (name, values, dates) => ({
     name,
@@ -95,8 +96,20 @@ describe('core functions', () => {
         expect(result.values).toEqual([5, 3, 1]);
     });
 
+    it('ind rebases from appliedStartDate when set', () => {
+        const fn = registry.get('ind');
+        // Set appliedStartDate to 2024-01-02
+        useAppStore.setState({ appliedStartDate: '2024-01-02' });
+        const result = fn(makeSeries('test', [50, 100, 75], ['2024-01-01', '2024-01-02', '2024-01-03']));
+        expect(result.values[0]).toBeCloseTo(0.5);   // 50/100
+        expect(result.values[1]).toBeCloseTo(1.0);   // 100/100
+        expect(result.values[2]).toBeCloseTo(0.75);  // 75/100
+        // Reset
+        useAppStore.setState({ appliedStartDate: '' });
+    });
+
     it('registerFunction preserves descriptions', () => {
         const entry = registry.functions['ind'];
-        expect(entry.description).toBe('Rebase series to start at 1.0');
+        expect(entry.description).toContain('Rebase to 1.0');
     });
 });
