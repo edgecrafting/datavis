@@ -2,7 +2,7 @@
 import { useAppStore } from '../../store/appStore.js';
 import { usePlotStore } from '../../store/plotStore.js';
 
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 export function serializeWorkspace(plotStore, appStore) {
     const plotState = plotStore;
@@ -24,6 +24,12 @@ export function serializeWorkspace(plotStore, appStore) {
                     endDate: plot.endDate,
                     plotType: plot.plotType,
                     seriesConfig: plot.seriesConfig,
+                    // V3 additions — preserve user customizations across Save/Open
+                    axisConfig: plot.axisConfig || {},
+                    titles: plot.titles || {},
+                    styleConfig: plot.styleConfig || {},
+                    annotations: plot.annotations || [],
+                    seriesOrder: plot.seriesOrder || [],
                 }];
             })
         ),
@@ -42,8 +48,23 @@ function migrateV1toV2(data) {
     return data;
 }
 
+function migrateV2toV3(data) {
+    // V3 adds axisConfig, titles, styleConfig, annotations, seriesOrder per-plot
+    for (const id of Object.keys(data.plots || {})) {
+        const p = data.plots[id];
+        if (!p.axisConfig) p.axisConfig = {};
+        if (!p.titles) p.titles = {};
+        if (!p.styleConfig) p.styleConfig = {};
+        if (!p.annotations) p.annotations = [];
+        if (!p.seriesOrder) p.seriesOrder = [];
+    }
+    data.version = 3;
+    return data;
+}
+
 const migrations = {
     1: migrateV1toV2,
+    2: migrateV2toV3,
 };
 
 export function deserializeWorkspace(data) {
