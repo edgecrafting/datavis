@@ -261,7 +261,10 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
     });
     commandRegistry.register('file.printPreview', { label: 'Print Preview', handler: () => setStatus('Print Preview not implemented'), enabled: () => false });
     commandRegistry.register('file.printSetup', { label: 'Print Setup...', handler: () => setStatus('Print Setup not implemented'), enabled: () => false });
-    commandRegistry.register('file.plotProperties', { label: 'Plot Properties', handler: () => setStatus('Plot Properties not implemented'), enabled: () => false });
+    commandRegistry.register('file.plotProperties', {
+        label: 'Plot Properties...',
+        handler: () => appStore.setState({ activeDialog: 'plotProperties' })
+    });
     commandRegistry.register('file.exit', {
         label: 'Exit',
         handler: () => {
@@ -284,6 +287,25 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         shortcut: 'Ctrl+Shift+C',
         handler: () => {
             if (getPlot()) getPlot().requestChartAction('copyGraphics');
+        }
+    });
+    commandRegistry.register('edit.copyGraphicsWithSize', {
+        label: 'Copy Graphics with Size...',
+        handler: () => {
+            const dims = prompt('Width x Height (e.g. 1920x1080):', '1200x600');
+            if (!dims) return;
+            const m = dims.match(/^\s*(\d+)\s*[x×]\s*(\d+)\s*$/i);
+            if (!m) {
+                setStatus('Invalid size — use WIDTHxHEIGHT, e.g. 1920x1080');
+                return;
+            }
+            const width = parseInt(m[1], 10);
+            const height = parseInt(m[2], 10);
+            if (width < 100 || height < 100 || width > 8000 || height > 8000) {
+                setStatus('Size must be between 100x100 and 8000x8000');
+                return;
+            }
+            if (getPlot()) getPlot().requestChartAction('copyGraphics', { width, height });
         }
     });
     commandRegistry.register('edit.copyData', {
@@ -396,10 +418,47 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
             setStatus(`Applied date range to ${ps.plotOrder.length} plot(s)`);
         }
     });
-    commandRegistry.register('view.gotoNextFolder', { label: 'Goto Next Folder', shortcut: 'Ctrl+Shift+PgDn', handler: () => setStatus('Tree navigation not implemented'), enabled: () => false });
-    commandRegistry.register('view.gotoPrevFolder', { label: 'Goto Prev Folder', shortcut: 'Ctrl+Shift+PgUp', handler: () => setStatus('Tree navigation not implemented'), enabled: () => false });
-    commandRegistry.register('view.gotoNextFile', { label: 'Goto Next File', shortcut: 'PgDn', handler: () => setStatus('Tree navigation not implemented'), enabled: () => false });
-    commandRegistry.register('view.gotoPrevFile', { label: 'Goto Prev File', shortcut: 'PgUp', handler: () => setStatus('Tree navigation not implemented'), enabled: () => false });
+    // Tree navigation — walks DOM in display order, respects expand/collapse
+    function navigateTree(direction, folderOnly = false) {
+        const all = Array.from(document.querySelectorAll('.tree-node'));
+        if (all.length === 0) return;
+        const filter = (el) => {
+            if (!folderOnly) return true;
+            // Folders have a chevron icon visible inside .tree-toggle
+            return el.querySelector('.tree-toggle svg') !== null;
+        };
+        const candidates = all.filter(filter);
+        if (candidates.length === 0) return;
+        const current = document.querySelector('.tree-node.selected');
+        const currentIdx = current ? candidates.indexOf(current) : -1;
+        let nextIdx = currentIdx + direction;
+        if (nextIdx < 0) nextIdx = candidates.length - 1;
+        if (nextIdx >= candidates.length) nextIdx = 0;
+        const next = candidates[nextIdx];
+        next.click();
+        next.scrollIntoView({ block: 'nearest' });
+    }
+
+    commandRegistry.register('view.gotoNextFolder', {
+        label: 'Goto Next Folder',
+        shortcut: 'Ctrl+Shift+PgDn',
+        handler: () => navigateTree(1, true)
+    });
+    commandRegistry.register('view.gotoPrevFolder', {
+        label: 'Goto Prev Folder',
+        shortcut: 'Ctrl+Shift+PgUp',
+        handler: () => navigateTree(-1, true)
+    });
+    commandRegistry.register('view.gotoNextFile', {
+        label: 'Goto Next File',
+        shortcut: 'PgDn',
+        handler: () => navigateTree(1, false)
+    });
+    commandRegistry.register('view.gotoPrevFile', {
+        label: 'Goto Prev File',
+        shortcut: 'PgUp',
+        handler: () => navigateTree(-1, false)
+    });
     commandRegistry.register('view.toggleMainToolbar', {
         label: 'Main ToolBar',
         handler: () => appStore.setState(s => ({ showMainToolbar: !s.showMainToolbar })),
@@ -504,8 +563,14 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         label: 'Background...',
         handler: () => appStore.setState({ activeDialog: 'plotStyle', plotStyleInitialTab: 'background' })
     });
-    commandRegistry.register('format.decimals', { label: 'Decimals', handler: () => setStatus('Use Tools > Options for decimals'), enabled: () => false });
-    commandRegistry.register('format.currencyCode', { label: 'Currency Code', handler: () => setStatus('Currency suffix not implemented'), enabled: () => false });
+    commandRegistry.register('format.decimals', {
+        label: 'Decimals...',
+        handler: () => appStore.setState({ activeDialog: 'options' })
+    });
+    commandRegistry.register('format.currencyCode', {
+        label: 'Currency Code...',
+        handler: () => appStore.setState({ activeDialog: 'options' })
+    });
     commandRegistry.register('format.onRight', {
         label: 'On Right',
         shortcut: 'Ctrl+T',
@@ -552,12 +617,74 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
             if (getPlot()) getPlot().requestEvaluation();
         }
     });
-    commandRegistry.register('tools.recalculateFolder', { label: 'Recalculate Folder', shortcut: 'Alt+F5', handler: () => setStatus('Recalculate folder not implemented'), enabled: () => false });
-    commandRegistry.register('tools.recalculateFile', { label: 'Recalculate File', handler: () => setStatus('Recalculate file not implemented'), enabled: () => false });
+    commandRegistry.register('tools.recalculateFolder', {
+        label: 'Recalculate Folder',
+        shortcut: 'Alt+F5',
+        handler: async () => {
+            if (!window.electron?.dialog?.openDirectory) return;
+            const dir = await window.electron.dialog.openDirectory();
+            if (!dir) return;
+            // Invalidate cache entries that came from this folder, then re-evaluate.
+            const cache = getData().seriesCache || {};
+            const dirNorm = dir.toLowerCase();
+            let invalidated = 0;
+            for (const name of Object.keys(cache)) {
+                const path = cache[name]?.path?.toLowerCase();
+                if (path && path.startsWith(dirNorm)) {
+                    delete cache[name];
+                    invalidated++;
+                }
+            }
+            // Trigger evaluation on every plot
+            const ps = getPlot();
+            if (ps) {
+                ps.plotOrder.forEach(() => ps.requestEvaluation());
+                ps.requestEvaluation();
+            }
+            setStatus(`Invalidated ${invalidated} cached series under ${dir}, re-evaluating`);
+        }
+    });
+    commandRegistry.register('tools.recalculateFile', {
+        label: 'Recalculate File',
+        handler: async () => {
+            const selected = getApp().selectedFile;
+            if (!selected?.path) {
+                setStatus('Select a file in the tree first');
+                return;
+            }
+            const cache = getData().seriesCache || {};
+            const pathLower = selected.path.toLowerCase();
+            let invalidated = 0;
+            for (const name of Object.keys(cache)) {
+                if (cache[name]?.path?.toLowerCase() === pathLower) {
+                    delete cache[name];
+                    invalidated++;
+                }
+            }
+            if (getPlot()) getPlot().requestEvaluation();
+            setStatus(`Invalidated ${invalidated} cached entry for ${selected.name}, re-evaluating`);
+        }
+    });
     commandRegistry.register('tools.slangExamples', {
         label: 'Slang Examples',
         shortcut: 'F7',
         handler: () => appStore.setState({ activeDialog: 'studyPanel' })
+    });
+    commandRegistry.register('tools.reloadSlangLibrary', {
+        label: 'Reload Slang Library',
+        handler: async () => {
+            try {
+                // Force re-import of the function registry module. The registry is
+                // additive (registerFunction overwrites by name), so re-importing
+                // is safe and picks up any changes during dev.
+                const ts = Date.now();
+                await import(/* @vite-ignore */ `../functions/core.js?reload=${ts}`);
+                const count = (await import('../functions/registry.js')).registry.list().length;
+                setStatus(`Slang library reloaded: ${count} functions available`);
+            } catch (err) {
+                setStatus(`Reload failed: ${err.message}`);
+            }
+        }
     });
     commandRegistry.register('tools.options', {
         label: 'Options...',
@@ -601,6 +728,10 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         }
     });
     commandRegistry.register('data.lastError', { label: 'Last Error', handler: () => setStatus(getData().error || 'No errors') });
+    commandRegistry.register('data.popularSymbols', {
+        label: 'Most Popular Symbols',
+        handler: () => appStore.setState({ activeDialog: 'popularSymbols' })
+    });
 
     // === WINDOW ===
     commandRegistry.register('window.tile', { label: 'Tile', handler: () => setStatus('Multi-window tiling not implemented'), enabled: () => false });

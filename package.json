@@ -1,7 +1,10 @@
 {
   "name": "datavis-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Electron + React financial time series visualization tool",
+  "license": "MIT",
+  "author": "edgecrafting",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {

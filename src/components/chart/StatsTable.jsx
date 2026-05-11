@@ -5,6 +5,8 @@ import { useAppStore } from '../../store/appStore.js';
 import { getSeriesColor } from '../../services/chart/colors.js';
 import { dateAlignMultiple } from '../../services/expression/dateAlign.js';
 
+
+
 function formatPct(val) {
     if (val === null || val === undefined || isNaN(val)) return '-';
     return (val * 100).toFixed(1) + '%';
@@ -15,12 +17,9 @@ function formatNum(val, decimals = 4) {
     return val.toFixed(decimals);
 }
 
-function formatLast(val) {
+function formatLast(val, decimals = 4) {
     if (val === null || val === undefined || isNaN(val)) return '-';
-    const abs = Math.abs(val);
-    if (abs >= 1000) return val.toFixed(0);
-    if (abs >= 1) return val.toFixed(2);
-    return val.toFixed(4);
+    return val.toFixed(decimals);
 }
 
 function shortDate(dateStr) {
@@ -43,6 +42,8 @@ export default function StatsTable() {
     const seriesMap = useDataStore(s => s.seriesMap);
     const toggleSeries = usePlotStore(s => s.setSeriesConfig);
     const seriesOrder = usePlotStore(s => s.plots[s.activePlotId]?.seriesOrder) || [];
+    const decimals = useAppStore(s => s.decimals);
+    const currencyCode = useAppStore(s => s.currencyCode);
     const [contextMenu, setContextMenu] = useState(null); // { x, y, key }
     const [dragIdx, setDragIdx] = useState(null);
     const [dropTargetIdx, setDropTargetIdx] = useState(null);
@@ -124,25 +125,13 @@ export default function StatsTable() {
                     </div>
                     <div className="menu-separator" />
                     <div className="menu-item" onClick={ctxAction(() => {
-                        const color = prompt('Color (hex like #ff0000, or name):', series.color || '');
-                        if (color) {
-                            toggleSeries(key, { color });
-                            triggerRecalc();
-                        }
+                        useAppStore.setState({
+                            activeDialog: 'seriesProperties',
+                            seriesPropertiesKey: key,
+                        });
                     })}>
                         <span className="menu-check" />
-                        <span className="menu-label">Color...</span>
-                    </div>
-                    <div className="menu-item" onClick={ctxAction(() => {
-                        const w = prompt('Line width (0.5 - 5):', cfg.lineWidth || '1.5');
-                        const n = parseFloat(w);
-                        if (!isNaN(n) && n > 0 && n <= 5) {
-                            toggleSeries(key, { lineWidth: n });
-                            triggerRecalc();
-                        }
-                    })}>
-                        <span className="menu-check" />
-                        <span className="menu-label">Line Width...</span>
+                        <span className="menu-label">Properties...</span>
                     </div>
                     <div className="menu-separator" />
                     <div className="menu-item" onClick={ctxAction(() => {
@@ -237,7 +226,7 @@ export default function StatsTable() {
                                 <td className="stats-cell stats-num">{formatPct(stats.maxDD)}</td>
                                 <td className="stats-cell stats-num">{formatPct(stats.minR1)}</td>
                                 <td className="stats-cell stats-num">{formatPct(stats.maxR1)}</td>
-                                <td className="stats-cell stats-num">{formatLast(last)}</td>
+                                <td className="stats-cell stats-num">{currencyCode && currencyCode !== '%' ? currencyCode : ''}{formatLast(last, decimals)}{currencyCode === '%' ? '%' : ''}</td>
                                 <td className="stats-cell stats-num">{points}</td>
                                 <td className="stats-cell stats-num">{shortDate(startDate)}</td>
                                 <td className="stats-cell stats-num">{shortDate(endDate)}</td>

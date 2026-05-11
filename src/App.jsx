@@ -30,6 +30,9 @@ import BrowseSymbolSearch from './components/dialogs/BrowseSymbolSearch';
 import AcceleratorKeys from './components/dialogs/AcceleratorKeys';
 import PlotStyleDialog from './components/dialogs/PlotStyleDialog';
 import TipOfTheDay from './components/dialogs/TipOfTheDay';
+import SeriesProperties from './components/dialogs/SeriesProperties';
+import PlotProperties from './components/dialogs/PlotProperties';
+import PopularSymbols from './components/dialogs/PopularSymbols';
 
 // Register commands once at module level
 registerAllCommands(useAppStore, useDataStore, usePlotStore);
@@ -151,6 +154,14 @@ function App() {
             {activeDialog === 'acceleratorKeys' && <AcceleratorKeys onClose={closeDialog} />}
             {activeDialog === 'plotStyle' && <PlotStyleDialog onClose={closeDialog} initialTab={useAppStore.getState().plotStyleInitialTab || 'fonts'} />}
             {activeDialog === 'tipOfDay' && <TipOfTheDay onClose={closeDialog} />}
+            {activeDialog === 'seriesProperties' && (
+                <SeriesProperties
+                    seriesKey={useAppStore.getState().seriesPropertiesKey}
+                    onClose={closeDialog}
+                />
+            )}
+            {activeDialog === 'plotProperties' && <PlotProperties onClose={closeDialog} />}
+            {activeDialog === 'popularSymbols' && <PopularSymbols onClose={closeDialog} />}
         </div>
     );
 }

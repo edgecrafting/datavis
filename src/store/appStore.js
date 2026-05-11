@@ -77,6 +77,20 @@ export const useAppStore = create((set) => ({
         } catch { return true; }
     })(),
 
+    // Display preferences (read from plottoolOptions, written by OptionsDialog)
+    decimals: (() => {
+        try {
+            const opts = JSON.parse(ls.getItem('plottoolOptions') || '{}');
+            return Number.isFinite(opts.decimals) ? opts.decimals : 4;
+        } catch { return 4; }
+    })(),
+    currencyCode: (() => {
+        try {
+            const opts = JSON.parse(ls.getItem('plottoolOptions') || '{}');
+            return typeof opts.currencyCode === 'string' ? opts.currencyCode : '';
+        } catch { return ''; }
+    })(),
+
     // 2D: Consolidated dialog state — replaces 9 individual booleans
     activeDialog: null,  // 'colorPicker' | 'dataViewer' | 'vitalStats' | 'findReplace' | 'functionInsert' | 'favoritesManager' | 'studyPanel' | 'options' | 'about' | null
     dataViewerMerged: false,  // orthogonal flag for data viewer mode

@@ -24,6 +24,8 @@ export default function ChartView() {
     const { seriesMap } = useDataStore();
     const plotTitle = useAppStore(s => s.plotTitle);
     const setHover = useAppStore(s => s.setHover);
+    const decimals = useAppStore(s => s.decimals);
+    const currencyCode = useAppStore(s => s.currencyCode);
     const clearHover = useAppStore(s => s.clearHover);
     const plotType = usePlotStore(s => s.plots[s.activePlotId]?.plotType) || 'timeseries';
     const axisConfigRaw = usePlotStore(s => s.plots[s.activePlotId]?.axisConfig);
@@ -121,14 +123,16 @@ export default function ChartView() {
         closeContextMenu();
     }, [closeContextMenu, getPlotEl]);
 
-    const handleCopyGraphics = useCallback(() => {
+    const handleCopyGraphics = useCallback((payload = null) => {
         const plotEl = getPlotEl();
         if (plotEl) {
+            const width = payload?.width || 1200;
+            const height = payload?.height || 600;
             import('plotly.js-basic-dist-min').then(Plotly => {
-                Plotly.default.toImage(plotEl, { format: 'png', width: 1200, height: 600 }).then(url => {
+                Plotly.default.toImage(plotEl, { format: 'png', width, height }).then(url => {
                     fetch(url).then(r => r.blob()).then(blob => {
                         navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                        useAppStore.setState({ statusMessage: 'Graphics copied to clipboard' });
+                        useAppStore.setState({ statusMessage: `Graphics copied (${width}x${height})` });
                     });
                 });
             });
@@ -201,7 +205,7 @@ export default function ChartView() {
         if (!chartAction) return;
         switch (chartAction.type) {
             case 'zoomBackOut': handleZoomBackOut(); break;
-            case 'copyGraphics': handleCopyGraphics(); break;
+            case 'copyGraphics': handleCopyGraphics(chartAction.payload); break;
             case 'zoomIn': zoomBy(0.7); break;
             case 'zoomOut': zoomBy(1.4); break;
             case 'zoomToDataStart': zoomToDataStart(); break;
@@ -238,7 +242,11 @@ export default function ChartView() {
                 x: dates,
                 y: values,
                 name: series.name || key,
-                line: { width: config.lineWidth || 1.5, color },
+                line: {
+                    width: config.lineWidth || 1.5,
+                    color,
+                    dash: config.lineStyle && config.lineStyle !== 'solid' ? config.lineStyle : undefined,
+                },
                 marker: { color },
             };
 
@@ -341,6 +349,8 @@ export default function ChartView() {
             yaxis: {
                 showgrid: true, gridcolor: '#e0e0e0', tickfont: { family: fontFamily, size: fontSize },
                 title: titles.yAxis ? { text: titles.yAxis, font: { family: fontFamily, size: fontSize + 1 } } : undefined,
+                tickformat: currencyCode === '%' ? `.${decimals}%` : `.${decimals}f`,
+                tickprefix: currencyCode && currencyCode !== '%' ? currencyCode : undefined,
             },
             legend: { orientation: 'h', y: 1.1, font: { family: fontFamily, size: fontSize } },
             plot_bgcolor: plotBg,
@@ -361,6 +371,8 @@ export default function ChartView() {
                 overlaying: 'y', side: 'right', showgrid: false,
                 tickfont: { family: fontFamily, size: fontSize },
                 title: titles.y2Axis ? { text: titles.y2Axis, font: { family: fontFamily, size: fontSize + 1 } } : undefined,
+                tickformat: currencyCode === '%' ? `.${decimals}%` : `.${decimals}f`,
+                tickprefix: currencyCode && currencyCode !== '%' ? currencyCode : undefined,
             };
         }
 
@@ -395,7 +407,7 @@ export default function ChartView() {
 
         return { plotData: data, layout: chartLayout };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [seriesMap, plotTitle, plotType, axisConfig, titles, styleConfig, userAnnotations, seriesOrder]);
+    }, [seriesMap, plotTitle, plotType, axisConfig, titles, styleConfig, userAnnotations, seriesOrder, decimals, currencyCode]);
 
     if (seriesKeys.length === 0) {
         return (

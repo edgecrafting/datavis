@@ -19,7 +19,7 @@ describe('workspace serialization', () => {
         };
         const appState = { rootPath: '/data' };
         const data = serializeWorkspace(plotState, appState);
-        expect(data.version).toBe(2);
+        expect(data.version).toBe(3);
         const round = deserializeWorkspace(data);
         expect(round.rootPath).toBe('/data');
         expect(round.activePlotId).toBe('p1');
@@ -36,6 +36,46 @@ describe('workspace serialization', () => {
         };
         const result = deserializeWorkspace(v1);
         expect(result.plots.p1.plotType).toBe('timeseries');
+    });
+
+    it('migrates V1 → V3 in one pass (chained migrations)', () => {
+        const v1 = {
+            version: 1,
+            rootPath: '/data',
+            activePlotId: 'p1',
+            plotOrder: ['p1'],
+            plots: { p1: { id: 'p1', name: 'Plot 1', expressions: 'SPX' } },
+        };
+        const result = deserializeWorkspace(v1);
+        // V2 added plotType
+        expect(result.plots.p1.plotType).toBe('timeseries');
+        // V3 added customization fields
+        expect(result.plots.p1.axisConfig).toEqual({});
+        expect(result.plots.p1.annotations).toEqual([]);
+        expect(result.plots.p1.seriesOrder).toEqual([]);
+    });
+
+    it('preserves V3 customizations through round-trip', () => {
+        const plotState = {
+            plots: {
+                p1: {
+                    id: 'p1', name: 'Plot 1', expressions: 'SPX',
+                    startDate: '', endDate: '', plotType: 'timeseries', seriesConfig: {},
+                    axisConfig: { yLog: true }, titles: { chartTitle: 'My Chart' },
+                    styleConfig: { fontSize: 12 },
+                    annotations: [{ x: '2024-01-01', y: 100, text: 'note' }],
+                    seriesOrder: ['SPX'],
+                }
+            },
+            plotOrder: ['p1'], activePlotId: 'p1',
+        };
+        const data = serializeWorkspace(plotState, { rootPath: '/data' });
+        const round = deserializeWorkspace(data);
+        expect(round.plots.p1.axisConfig.yLog).toBe(true);
+        expect(round.plots.p1.titles.chartTitle).toBe('My Chart');
+        expect(round.plots.p1.styleConfig.fontSize).toBe(12);
+        expect(round.plots.p1.annotations).toHaveLength(1);
+        expect(round.plots.p1.seriesOrder).toEqual(['SPX']);
     });
 
     it('throws on missing version field', () => {

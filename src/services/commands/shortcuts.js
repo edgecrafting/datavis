@@ -22,6 +22,8 @@ const shortcutMap = {
     'ctrl+d': 'data.viewMerged',
     'ctrl+shift+pgdn': 'view.gotoNextFolder',
     'ctrl+shift+pgup': 'view.gotoPrevFolder',
+    'pgdn': 'view.gotoNextFile',
+    'pgup': 'view.gotoPrevFile',
     'alt+a': 'data.vitalStats',
     'alt+c': 'format.color',
     'alt+r': 'view.zoomBackOut',

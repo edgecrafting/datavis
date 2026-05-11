@@ -42,6 +42,7 @@ function getMenuDefinition() {
             { id: 'edit.cut' },
             { id: 'edit.copy' },
             { id: 'edit.copyGraphics' },
+            { id: 'edit.copyGraphicsWithSize' },
             { id: 'edit.copyData' },
             { id: 'edit.paste' },
             { type: 'separator' },
@@ -116,6 +117,7 @@ function getMenuDefinition() {
             ]},
             { type: 'separator' },
             { id: 'tools.slangExamples' },
+            { id: 'tools.reloadSlangLibrary' },
             { type: 'separator' },
             { id: 'tools.options' },
         ],
@@ -126,6 +128,7 @@ function getMenuDefinition() {
             { id: 'data.vitalStats' },
             { id: 'data.cacheStats' },
             { id: 'data.memoryUsage' },
+            { id: 'data.popularSymbols' },
             { id: 'data.lastError' },
         ],
         Window: [

@@ -14,6 +14,7 @@ function loadOptions() {
         dateFormat: 'YYYY-MM-DD',
         decimals: 4,
         defaultLineWidth: 1.5,
+        currencyCode: '',
         useSampleVariance: (() => {
             try {
                 const v = localStorage.getItem('useSampleVariance');
@@ -34,7 +35,11 @@ export default function OptionsDialog({ onClose }) {
         if (options.defaultRootPath) {
             useAppStore.getState().setRootPath(options.defaultRootPath);
         }
-        useAppStore.setState({ useSampleVariance: options.useSampleVariance });
+        useAppStore.setState({
+            useSampleVariance: options.useSampleVariance,
+            decimals: options.decimals,
+            currencyCode: options.currencyCode,
+        });
         // Update live stats config so recomputes use the new setting immediately.
         setStatsConfig({ useSampleVariance: options.useSampleVariance });
         // Trigger a recalc so stats refresh
@@ -98,6 +103,23 @@ export default function OptionsDialog({ onClose }) {
                         value={options.defaultLineWidth}
                         onChange={(e) => update('defaultLineWidth', parseFloat(e.target.value) || 1.5)}
                     />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <label style={{ fontSize: '11px', width: '100px' }}>Currency Code:</label>
+                    <select
+                        value={options.currencyCode}
+                        onChange={(e) => update('currencyCode', e.target.value)}
+                        style={{ fontSize: '11px', width: '120px' }}
+                    >
+                        <option value="">(none)</option>
+                        <option value="$">USD ($)</option>
+                        <option value="€">EUR (€)</option>
+                        <option value="£">GBP (£)</option>
+                        <option value="¥">JPY/CNY (¥)</option>
+                        <option value="CHF ">CHF</option>
+                        <option value="%">Percent (%)</option>
+                    </select>
+                    <span style={{ fontSize: '10px', color: '#666' }}>Y-axis label suffix</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <label style={{ fontSize: '11px', width: '100px' }}>Sample Variance:</label>

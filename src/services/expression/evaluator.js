@@ -7,6 +7,7 @@ import { withStats } from '../stats/withStats.js';
 import { loadCsvSeries } from '../csv/loader.js';
 import { useDataStore } from '../../store/dataStore.js';
 import { useAppStore } from '../../store/appStore.js';
+import { recordUsage } from '../usage/tracker.js';
 import '../functions/core.js';
 
 // In-flight load coalescing: identical concurrent requests share one Promise.
@@ -130,14 +131,19 @@ async function evalNode(node, context) {
                 .find(k => k.toLowerCase() === key);
             if (ciCtxKey) return context[ciCtxKey];
 
-            // Check cache
+            // Check cache (track usage on every reference, not just loads)
             const cached = useDataStore.getState().getFromCache(node.name);
-            if (cached) return cached;
+            if (cached) {
+                recordUsage(node.name);
+                return cached;
+            }
 
             // Auto-load from filesystem
             resolving?.add(key);
             try {
-                return await autoLoadSeries(node.name);
+                const series = await autoLoadSeries(node.name);
+                recordUsage(node.name);
+                return series;
             } finally {
                 resolving?.delete(key);
             }
