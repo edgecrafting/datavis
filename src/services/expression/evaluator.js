@@ -9,12 +9,11 @@ import { useDataStore } from '../../store/dataStore.js';
 import { useAppStore } from '../../store/appStore.js';
 import '../functions/core.js';
 
-/**
- * Auto-load a series by name from the filesystem.
- * Tries multiple filename patterns to find a matching CSV.
- * Caches the result for future lookups.
- */
-async function autoLoadSeries(name) {
+// In-flight load coalescing: identical concurrent requests share one Promise.
+// Keyed by lowercase name to match the case-insensitive cache lookup behavior.
+const pendingLoads = new Map();
+
+async function autoLoadSeriesInner(name) {
     const store = useDataStore.getState();
 
     // Check cache first (exact then case-insensitive)
@@ -50,15 +49,35 @@ async function autoLoadSeries(name) {
 }
 
 /**
- * Evaluate a single expression line. Async because series may need auto-loading.
- * Context holds intermediate named results from assignments.
+ * Auto-load a series by name from the filesystem with in-flight deduplication.
+ * Two concurrent calls for the same name share a single underlying load.
  */
-// 3C: Track series currently being resolved to detect circular references
-const resolving = new Set();
+async function autoLoadSeries(name) {
+    const key = name.toLowerCase();
+    const pending = pendingLoads.get(key);
+    if (pending) return pending;
 
+    const promise = (async () => {
+        try {
+            return await autoLoadSeriesInner(name);
+        } finally {
+            pendingLoads.delete(key);
+        }
+    })();
+    pendingLoads.set(key, promise);
+    return promise;
+}
+
+/**
+ * Evaluate a single expression line. Async because series may need auto-loading.
+ * Context holds intermediate named results from assignments and a per-evaluation
+ * `_resolving` Set used for circular-reference detection (scoped to this call so
+ * concurrent evaluations across plot tabs do not poison each other).
+ */
 export async function evaluateExpression(exprText, context = {}) {
+    if (!context._resolving) context._resolving = new Set();
     const cache = useDataStore.getState().seriesCache;
-    const knownNames = [...Object.keys(cache), ...Object.keys(context)];
+    const knownNames = [...Object.keys(cache), ...Object.keys(context).filter(k => !k.startsWith('_'))];
     const tokens = tokenize(exprText.trim(), knownNames);
     const ast = parse(tokens);
     return await evalNode(ast, context);
@@ -71,7 +90,7 @@ export async function evaluateExpression(exprText, context = {}) {
  */
 export async function evaluateMultiline(text) {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    const context = {};
+    const context = { _resolving: new Set() };
     const results = [];
 
     for (const line of lines) {
@@ -96,14 +115,19 @@ async function evalNode(node, context) {
             return { _isString: true, value: node.value };
 
         case 'SeriesRef': {
-            // 3C: Circular reference detection
-            if (resolving.has(node.name.toLowerCase())) {
+            const resolving = context._resolving;
+            const key = node.name.toLowerCase();
+
+            // Circular reference detection (per-evaluation scope)
+            if (resolving?.has(key)) {
                 throw new Error(`Circular reference detected: '${node.name}' references itself`);
             }
 
             // Check context first (from assignments in earlier lines)
             if (context[node.name]) return context[node.name];
-            const ciCtxKey = Object.keys(context).find(k => k.toLowerCase() === node.name.toLowerCase());
+            const ciCtxKey = Object.keys(context)
+                .filter(k => !k.startsWith('_'))
+                .find(k => k.toLowerCase() === key);
             if (ciCtxKey) return context[ciCtxKey];
 
             // Check cache
@@ -111,11 +135,11 @@ async function evalNode(node, context) {
             if (cached) return cached;
 
             // Auto-load from filesystem
-            resolving.add(node.name.toLowerCase());
+            resolving?.add(key);
             try {
                 return await autoLoadSeries(node.name);
             } finally {
-                resolving.delete(node.name.toLowerCase());
+                resolving?.delete(key);
             }
         }
 

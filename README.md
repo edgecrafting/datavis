@@ -1,4 +1,4 @@
-# PlotTool
+# DataVis
 
 Electron + React desktop application for visualizing and analyzing Bloomberg financial time series data.
 

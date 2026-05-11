@@ -1,4 +1,6 @@
 // Workspace serialization and deserialization with migration support
+import { useAppStore } from '../../store/appStore.js';
+import { usePlotStore } from '../../store/plotStore.js';
 
 const CURRENT_VERSION = 2;
 
@@ -48,6 +50,9 @@ export function deserializeWorkspace(data) {
     if (!data || !data.version) {
         throw new Error('Invalid workspace file format');
     }
+    if (data.version > CURRENT_VERSION) {
+        throw new Error(`Workspace version ${data.version} is newer than supported (${CURRENT_VERSION}). Update DataVis.`);
+    }
 
     // Apply migrations in sequence
     let current = data;
@@ -65,4 +70,40 @@ export function deserializeWorkspace(data) {
         plotOrder: current.plotOrder,
         plots: current.plots,
     };
+}
+
+/**
+ * Load a workspace from disk and apply it atomically to the stores.
+ * Returns true on success, throws on parse/migration failure.
+ */
+export async function loadWorkspaceFromPath(filePath) {
+    if (!window.electron?.fs?.readFile) {
+        throw new Error('File reading not available');
+    }
+    const content = await window.electron.fs.readFile(filePath);
+    const data = JSON.parse(content);
+    const workspace = deserializeWorkspace(data);
+
+    // Apply atomically to plot store
+    usePlotStore.setState({
+        plots: workspace.plots,
+        plotOrder: workspace.plotOrder,
+        activePlotId: workspace.activePlotId,
+    });
+
+    // Update app state — keep rootPath if the workspace has one, track path
+    const appPatch = { currentWorkspacePath: filePath };
+    if (workspace.rootPath) {
+        appPatch.rootPath = workspace.rootPath;
+        appPatch.currentPath = workspace.rootPath;
+        try { localStorage.setItem('lastRootPath', workspace.rootPath); } catch { /* ignore */ }
+    }
+    useAppStore.setState(appPatch);
+
+    // Track in recent files (most recent first, dedup, cap at 6)
+    const recent = [filePath, ...(useAppStore.getState().recentFiles || []).filter(p => p !== filePath)].slice(0, 6);
+    useAppStore.setState({ recentFiles: recent });
+    try { localStorage.setItem('recentFiles', JSON.stringify(recent)); } catch { /* ignore */ }
+
+    return true;
 }

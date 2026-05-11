@@ -10,14 +10,15 @@ function getMenuDefinition() {
     return {
         File: [
             { id: 'file.new' },
+            { id: 'file.openWorkspace' },
             { id: 'file.open' },
+            { type: 'separator' },
             { id: 'file.save' },
-            { type: 'submenu', label: 'Save Others', items: [
-                { id: 'file.saveWorkspace' },
-            ]},
+            { id: 'file.saveAs' },
             { id: 'file.saveWorkspace' },
             { type: 'separator' },
-            { id: 'file.exportGif' },
+            { id: 'file.exportImage' },
+            { id: 'file.exportData' },
             { type: 'separator' },
             { id: 'file.print' },
             { id: 'file.printPreview' },
@@ -26,7 +27,11 @@ function getMenuDefinition() {
             { id: 'file.plotProperties' },
             { type: 'separator' },
             ...(recentFiles.length > 0 ? [
-                ...recentFiles.map((f, i) => ({ type: 'custom', label: `${i + 1}. ${f.split(/[\\/]/).pop()}`, handler: () => {} })),
+                ...recentFiles.map((f, i) => ({
+                    type: 'custom',
+                    label: `${i + 1}. ${f.split(/[\\/]/).pop()}`,
+                    handler: () => commandRegistry.execute('file.openWorkspace', f),
+                })),
                 { type: 'separator' },
             ] : []),
             { id: 'file.exit' },
@@ -76,6 +81,7 @@ function getMenuDefinition() {
             { type: 'separator' },
             { id: 'insert.function' },
             { id: 'insert.label' },
+            { id: 'insert.clearLabels' },
         ],
         Format: [
             { id: 'format.axes' },
@@ -131,6 +137,7 @@ function getMenuDefinition() {
         Help: [
             { id: 'help.topics' },
             { id: 'help.acceleratorKeys' },
+            { id: 'help.tipOfDay' },
             { type: 'separator' },
             { id: 'help.about' },
         ],
@@ -203,7 +210,6 @@ function MenuItem({ item, onClose }) {
 
 export default function MenuBar() {
     const [openMenu, setOpenMenu] = useState(null);
-    const [menuHover, setMenuHover] = useState(false);
     const barRef = useRef(null);
 
     const handleMenuClick = useCallback((name) => {

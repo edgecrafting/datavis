@@ -27,6 +27,43 @@ export const usePlotStore = create((set, get) => ({
     activePlotId: initialPlot.id,
     plotOrder: [initialPlot.id],
 
+    // Evaluation token — bumped by any caller that wants the active plot re-evaluated.
+    // ExpressionPanel subscribes and runs evaluateMultiline on change.
+    evaluationToken: 0,
+    requestEvaluation: () => set(state => ({ evaluationToken: state.evaluationToken + 1 })),
+
+    // Chart action queue — ChartView subscribes and handles the requested action.
+    // Pattern: { type: 'zoomBackOut'|'copyGraphics'|'copyData', token: N, payload?: ... }
+    chartAction: null,
+    requestChartAction: (type, payload = null) => set(state => ({
+        chartAction: { type, payload, token: (state.chartAction?.token || 0) + 1 }
+    })),
+
+    // Annotations actions — per-plot list of { x, y, text, color }
+    addAnnotation: (annotation) => set(state => {
+        const plot = state.plots[state.activePlotId];
+        if (!plot) return state;
+        const annotations = [...(plot.annotations || []), annotation];
+        return {
+            plots: { ...state.plots, [state.activePlotId]: { ...plot, annotations } }
+        };
+    }),
+    removeAnnotation: (index) => set(state => {
+        const plot = state.plots[state.activePlotId];
+        if (!plot) return state;
+        const annotations = (plot.annotations || []).filter((_, i) => i !== index);
+        return {
+            plots: { ...state.plots, [state.activePlotId]: { ...plot, annotations } }
+        };
+    }),
+    clearAnnotations: () => set(state => {
+        const plot = state.plots[state.activePlotId];
+        if (!plot) return state;
+        return {
+            plots: { ...state.plots, [state.activePlotId]: { ...plot, annotations: [] } }
+        };
+    }),
+
     getActivePlot: () => {
         const state = get();
         return state.plots[state.activePlotId] || null;

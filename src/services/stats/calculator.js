@@ -7,6 +7,7 @@
 // MaxR1: Maximum 1-day return
 
 import { parseDate } from '../dates/normalize.js';
+import { getStatsConfig } from './config.js';
 
 export const calculateStats = (dates, values) => {
     if (!values || values.length < 2) {
@@ -58,11 +59,7 @@ export const calculateStats = (dates, values) => {
 
     // Vol (Bessel's correction: N-1 for sample variance by default)
     const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-    let useSample = true;
-    try {
-        const v = localStorage.getItem('useSampleVariance');
-        if (v !== null) useSample = JSON.parse(v);
-    } catch { /* default to sample */ }
+    const useSample = getStatsConfig().useSampleVariance;
     const divisor = useSample && returns.length > 1 ? returns.length - 1 : returns.length;
     const variance = returns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / divisor;
     const vol = Math.sqrt(variance) * Math.sqrt(252);

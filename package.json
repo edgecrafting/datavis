@@ -1,5 +1,5 @@
 {
-  "name": "plottool-app",
+  "name": "datavis-app",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -44,8 +44,8 @@
     "wait-on": "^9.0.3"
   },
   "build": {
-    "appId": "com.plottool.app",
-    "productName": "PlotTool",
+    "appId": "com.datavis.app",
+    "productName": "DataVis",
     "files": [
       "dist/**/*",
       "electron/**/*"

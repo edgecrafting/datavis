@@ -1,7 +1,6 @@
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -10,38 +9,112 @@ if (require('electron-squirrel-startup')) {
 
 let mainWindow;
 
-// 4A: Track allowed root directory (updated when user opens a directory)
-let allowedRoot = null;
+// Allowed root directories (updated when user opens directories or workspaces).
+// Each root grants read/write access to itself and its descendants.
+const allowedRoots = new Set();
+
+// --- Persistent state (window geometry) ---
+const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
+
+function loadWindowState() {
+    try {
+        const raw = fs.readFileSync(STATE_FILE, 'utf-8');
+        const s = JSON.parse(raw);
+        return {
+            width: Number.isFinite(s.width) ? s.width : 1200,
+            height: Number.isFinite(s.height) ? s.height : 800,
+            x: Number.isFinite(s.x) ? s.x : undefined,
+            y: Number.isFinite(s.y) ? s.y : undefined,
+            isMaximized: !!s.isMaximized,
+        };
+    } catch {
+        return { width: 1200, height: 800 };
+    }
+}
+
+function saveWindowState() {
+    if (!mainWindow) return;
+    try {
+        const bounds = mainWindow.getBounds();
+        const state = {
+            width: bounds.width,
+            height: bounds.height,
+            x: bounds.x,
+            y: bounds.y,
+            isMaximized: mainWindow.isMaximized(),
+        };
+        fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf-8');
+    } catch (err) {
+        console.error('Failed to save window state:', err);
+    }
+}
+
+// Maximum file size readable via IPC (100 MB — workspaces are JSON, CSVs are small).
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 /**
- * Validate that a requested path is within the allowed root directory.
- * Prevents path traversal attacks via IPC.
+ * Validate that a requested path resolves to a real location within an allowed root.
+ * Uses fs.realpath to defeat symlink-based escapes. Returns the canonical path.
  */
-function validatePath(requestedPath) {
+async function validatePath(requestedPath) {
     if (!requestedPath || typeof requestedPath !== 'string') {
         throw new Error('Invalid path');
     }
     const resolved = path.resolve(requestedPath);
-    // Allow user home directory and subdirectories as a safety net
-    const homeDir = os.homedir();
-    if (resolved.startsWith(homeDir)) return resolved;
-    // If an allowed root is set, check against it
-    if (allowedRoot && resolved.startsWith(allowedRoot)) return resolved;
-    throw new Error(`Access denied: path outside allowed directory`);
+    // Canonicalize through realpath to defeat symlink escapes.
+    let canonical;
+    try {
+        canonical = await fs.promises.realpath(resolved);
+    } catch {
+        // Target may not exist yet (write case); fall back to dirname check.
+        canonical = resolved;
+    }
+    const normalized = canonical.toLowerCase();
+    for (const root of allowedRoots) {
+        const rootNorm = root.toLowerCase();
+        if (normalized === rootNorm || normalized.startsWith(rootNorm + path.sep)) {
+            return canonical;
+        }
+    }
+    throw new Error(`Access denied: path outside allowed directories`);
 }
 
 const createWindow = () => {
+    const state = loadWindowState();
     mainWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
+        width: state.width,
+        height: state.height,
+        x: state.x,
+        y: state.y,
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             nodeIntegration: false,
             contextIsolation: true,
+            sandbox: true,
         },
         autoHideMenuBar: true,
         frame: true,
-        title: 'PlotTool',
+        title: 'DataVis',
+    });
+    if (state.isMaximized) mainWindow.maximize();
+
+    // Persist window geometry on resize/move/close (debounced via 'close').
+    mainWindow.on('close', saveWindowState);
+
+    // Block window.open and external navigation
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        // Allow http(s) to open externally in the user's browser; deny everything else
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:')) {
+            shell.openExternal(url);
+        }
+        return { action: 'deny' };
+    });
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+        // Only allow navigation to the dev server / built-in start URL
+        const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5190';
+        if (!url.startsWith(startUrl) && !url.startsWith('file://')) {
+            event.preventDefault();
+        }
     });
 
     // 4B: Content Security Policy (production only — Vite dev server needs inline scripts)
@@ -91,7 +164,7 @@ app.on('activate', () => {
 // List files in a directory (for TreeView)
 ipcMain.handle('fs:list-dir', async (event, dirPath) => {
     try {
-        const safePath = validatePath(dirPath);
+        const safePath = await validatePath(dirPath);
         const entries = await fs.promises.readdir(safePath, { withFileTypes: true });
         return entries.map(entry => ({
             name: entry.name,
@@ -111,7 +184,11 @@ ipcMain.handle('fs:list-dir', async (event, dirPath) => {
 // Read file content
 ipcMain.handle('fs:read-file', async (event, filePath) => {
     try {
-        const safePath = validatePath(filePath);
+        const safePath = await validatePath(filePath);
+        const stat = await fs.promises.stat(safePath);
+        if (stat.size > MAX_FILE_SIZE) {
+            throw new Error(`File too large (${stat.size} bytes, max ${MAX_FILE_SIZE})`);
+        }
         return await fs.promises.readFile(safePath, 'utf-8');
     } catch (error) {
         throw new Error(`Failed to read file: ${error.message}`);
@@ -121,8 +198,28 @@ ipcMain.handle('fs:read-file', async (event, filePath) => {
 // Write file content
 ipcMain.handle('fs:write-file', async (event, filePath, content) => {
     try {
-        const safePath = validatePath(filePath);
+        if (typeof content !== 'string') throw new Error('Content must be a string');
+        if (content.length > MAX_FILE_SIZE) {
+            throw new Error(`Content too large (${content.length} bytes, max ${MAX_FILE_SIZE})`);
+        }
+        const safePath = await validatePath(filePath);
         await fs.promises.writeFile(safePath, content, 'utf-8');
+        return true;
+    } catch (error) {
+        throw new Error(`Failed to write file: ${error.message}`);
+    }
+});
+
+// Write binary content (decoded from a base64 string). Used for image exports.
+ipcMain.handle('fs:write-binary', async (event, filePath, base64) => {
+    try {
+        if (typeof base64 !== 'string') throw new Error('Content must be a base64 string');
+        const buf = Buffer.from(base64, 'base64');
+        if (buf.length > MAX_FILE_SIZE) {
+            throw new Error(`Content too large (${buf.length} bytes, max ${MAX_FILE_SIZE})`);
+        }
+        const safePath = await validatePath(filePath);
+        await fs.promises.writeFile(safePath, buf);
         return true;
     } catch (error) {
         throw new Error(`Failed to write file: ${error.message}`);
@@ -135,8 +232,8 @@ ipcMain.handle('dialog:open-directory', async () => {
         properties: ['openDirectory']
     });
     if (canceled) return null;
-    // Update allowed root when user explicitly selects a directory
-    allowedRoot = filePaths[0];
+    // Grant this directory and its descendants access via IPC.
+    allowedRoots.add(filePaths[0]);
     return filePaths[0];
 });
 
@@ -151,6 +248,8 @@ ipcMain.handle('dialog:open-file', async (event, options = {}) => {
         ]
     });
     if (canceled) return null;
+    // Grant access to the file's parent directory so reads succeed.
+    allowedRoots.add(path.dirname(filePaths[0]));
     return filePaths[0];
 });
 
@@ -164,12 +263,14 @@ ipcMain.handle('dialog:save-file', async (event, options = {}) => {
         defaultPath: options.defaultPath,
     });
     if (canceled) return null;
+    // Grant access to the chosen path's parent directory so writes succeed.
+    allowedRoots.add(path.dirname(filePath));
     return filePath;
 });
 
 // Scan folder recursively for CSV files
 ipcMain.handle('fs:scan-folder', async (event, dirPath) => {
-    const safePath = validatePath(dirPath);
+    const safePath = await validatePath(dirPath);
     const results = [];
     async function scan(dir) {
         try {
@@ -186,6 +287,21 @@ ipcMain.handle('fs:scan-folder', async (event, dirPath) => {
     }
     await scan(safePath);
     return results;
+});
+
+// Register a directory as an allowed root (used on app startup to grant the
+// persisted rootPath without showing the directory picker dialog).
+ipcMain.handle('fs:set-root', async (event, dirPath) => {
+    if (!dirPath || typeof dirPath !== 'string') return false;
+    try {
+        const resolved = path.resolve(dirPath);
+        const stat = await fs.promises.stat(resolved);
+        if (!stat.isDirectory()) return false;
+        allowedRoots.add(resolved);
+        return true;
+    } catch {
+        return false;
+    }
 });
 
 // Window operations

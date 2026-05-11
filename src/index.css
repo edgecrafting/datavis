@@ -311,11 +311,23 @@ body {
 
 /* Left Panel - Tree View */
 .tree-panel {
-  width: 200px;
+  width: var(--sidebar-width, 200px);
   min-width: 150px;
+  max-width: 600px;
   background: var(--input-bg);
   overflow: auto;
   border-right: 1px solid var(--shadow);
+}
+
+.tree-splitter {
+  width: 4px;
+  background: var(--bg-color);
+  cursor: col-resize;
+  border-left: 1px solid var(--shadow);
+}
+
+.tree-splitter:hover {
+  background: #d0d0e0;
 }
 
 /* Right Panel - Chart + Expression */
@@ -375,6 +387,80 @@ body {
   flex: 1;
 }
 
+.date-presets {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  margin: 0 4px;
+}
+
+.date-preset-btn {
+  height: 18px;
+  min-width: 28px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-family: var(--font-family);
+  background: var(--bg-color);
+  border: 1px solid var(--shadow);
+  border-top-color: var(--light);
+  border-left-color: var(--light);
+  cursor: pointer;
+  color: var(--text-color);
+}
+
+.date-preset-btn:hover {
+  background: #e8e8ff;
+}
+
+.date-preset-btn:active {
+  border: 1px solid var(--shadow);
+  border-bottom-color: var(--light);
+  border-right-color: var(--light);
+}
+
+.autocomplete-popup {
+  position: absolute;
+  bottom: 100%;
+  right: 4px;
+  background: #fff;
+  border: 1px solid var(--shadow);
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+  min-width: 200px;
+  max-width: 320px;
+  z-index: 1500;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.autocomplete-item {
+  padding: 2px 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.autocomplete-item.selected,
+.autocomplete-item:hover {
+  background: #0078d7;
+  color: #fff;
+}
+
+.autocomplete-kind {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  font-weight: bold;
+  font-family: var(--font-family);
+}
+
+.autocomplete-kind.kind-fn { color: #800080; }
+.autocomplete-kind.kind-series { color: #008000; }
+.autocomplete-item.selected .autocomplete-kind { color: #fff; }
+
 .expression-editor-wrapper {
   flex: 1;
   display: flex;
@@ -425,7 +511,47 @@ body {
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 12px;
   padding: 4px;
+  /* Make text transparent but keep caret + selection visible so the
+     syntax-highlight overlay underneath shows through. */
+  background: transparent;
+  color: transparent;
+  caret-color: #000;
+  position: relative;
+  z-index: 1;
+  white-space: pre;
+  line-height: 1.4;
+  overflow: auto;
 }
+.expression-textarea::selection {
+  background: rgba(0, 120, 215, 0.35);
+  color: transparent;
+}
+
+.expression-highlight {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  margin: 0;
+  padding: 4px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: hidden; /* scroll synced via JS */
+  pointer-events: none;
+  color: #000;
+  z-index: 0;
+}
+.expression-highlight .sx-line {
+  min-height: 1.4em;
+}
+.expression-highlight .sx-fn      { color: #7a3e9e; font-weight: 600; }
+.expression-highlight .sx-ident   { color: #1a4f8b; }
+.expression-highlight .sx-number  { color: #b04040; }
+.expression-highlight .sx-string  { color: #2d7a2d; }
+.expression-highlight .sx-op      { color: #a85a00; font-weight: 600; }
+.expression-highlight .sx-paren   { color: #555; }
+.expression-highlight .sx-punct   { color: #555; }
+.expression-highlight .sx-ws      { color: inherit; }
 
 /* GO Button */
 .go-button {
@@ -481,7 +607,7 @@ body {
    STATS TABLE
    ============================================ */
 .stats-table-container {
-  height: 80px;
+  height: 110px;
   min-height: 50px;
   overflow: auto;
   border-top: 1px solid var(--dark-shadow);
@@ -493,14 +619,21 @@ body {
   border-collapse: collapse;
   font-size: 10px;
   font-family: var(--font-family);
+  table-layout: auto;
 }
 
 .stats-table th,
 .stats-table td {
-  padding: 1px 6px;
+  padding: 1px 5px;
   text-align: right;
   white-space: nowrap;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.stats-num {
+  font-variant-numeric: tabular-nums;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 10px;
 }
 
 .stats-header {
@@ -514,7 +647,7 @@ body {
 
 .stats-name {
   text-align: left !important;
-  max-width: 180px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -532,6 +665,10 @@ body {
   width: 10px;
   height: 10px;
   border: 1px solid #999;
+}
+
+.stats-row.drop-target {
+  border-top: 2px solid #0078d7;
 }
 
 /* ============================================

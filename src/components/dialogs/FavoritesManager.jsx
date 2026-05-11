@@ -1,17 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DialogBase from './DialogBase.jsx';
 import { getFavorites, addFavorite, removeFavorite } from '../../services/favorites/manager.js';
-import { useAppStore } from '../../store/appStore.js';
 
 export default function FavoritesManager({ onClose }) {
-    const [favorites, setFavorites] = useState([]);
+    const [favorites, setFavorites] = useState(() => getFavorites());
     const [newPath, setNewPath] = useState('');
     const [newName, setNewName] = useState('');
-    const rootPath = useAppStore(s => s.rootPath);
-
-    useEffect(() => {
-        setFavorites(getFavorites());
-    }, []);
 
     const handleAdd = () => {
         if (newPath.trim()) {

@@ -3,8 +3,9 @@ import { commandRegistry } from './registry.js';
 
 const shortcutMap = {
     'ctrl+n': 'file.new',
-    'ctrl+o': 'file.open',
+    'ctrl+o': 'file.openWorkspace',
     'ctrl+s': 'file.save',
+    'ctrl+shift+s': 'file.saveAs',
     'ctrl+p': 'file.print',
     'ctrl+z': 'edit.undo',
     'ctrl+x': 'edit.cut',
@@ -13,6 +14,7 @@ const shortcutMap = {
     'ctrl+shift+c': 'edit.copyGraphics',
     'ctrl+shift+d': 'edit.copyData',
     'ctrl+f': 'edit.find',
+    'ctrl+shift+f': 'insert.browseSymbol',
     'ctrl+r': 'edit.replace',
     'ctrl+b': 'format.disabled',
     'ctrl+h': 'format.hidden',

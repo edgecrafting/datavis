@@ -8,7 +8,9 @@ import {
 } from 'lucide-react';
 import { commandRegistry } from '../../services/commands/registry.js';
 import { useAppStore } from '../../store/appStore.js';
+import { usePlotStore } from '../../store/plotStore.js';
 
+// eslint-disable-next-line no-unused-vars
 const ToolbarButton = ({ Icon, title, commandId, onClick, style, children }) => {
     const handleClick = () => {
         if (commandId) {
@@ -49,11 +51,7 @@ export default function Toolbar() {
                         Icon={Play}
                         title="GO (Ctrl+Enter)"
                         style={{ color: '#008000' }}
-                        onClick={() => {
-                            // Trigger GO in expression panel by simulating Ctrl+Enter
-                            const goBtn = document.querySelector('.go-button');
-                            if (goBtn) goBtn.click();
-                        }}
+                        onClick={() => usePlotStore.getState().requestEvaluation()}
                     />
                     <Separator />
                     <ToolbarButton Icon={FunctionSquare} title="Function (F4)" commandId="insert.function" />

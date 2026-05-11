@@ -1,19 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { calculateStats } from '../src/services/stats/calculator.js';
-
-// Mock localStorage for Bessel's correction toggle
-const localStorageMock = {
-    store: {},
-    getItem(key) { return this.store[key] ?? null; },
-    setItem(key, value) { this.store[key] = String(value); },
-    removeItem(key) { delete this.store[key]; },
-    clear() { this.store = {}; },
-};
-globalThis.localStorage = localStorageMock;
+import { setStatsConfig } from '../src/services/stats/config.js';
 
 describe('calculateStats', () => {
     beforeEach(() => {
-        localStorageMock.clear();
+        // Reset to default (sample variance) before each test
+        setStatsConfig({ useSampleVariance: true });
     });
 
     it('returns zeroes for empty input', () => {
@@ -62,10 +54,10 @@ describe('calculateStats', () => {
         // With N-1, vol should be slightly higher than population variance
         const dates = ['2024-01-01', '2024-01-02', '2024-01-03'];
         const values = [100, 102, 101];
-        localStorageMock.setItem('useSampleVariance', 'true');
+        setStatsConfig({ useSampleVariance: true });
         const statsSample = calculateStats(dates, values);
 
-        localStorageMock.setItem('useSampleVariance', 'false');
+        setStatsConfig({ useSampleVariance: false });
         const statsPop = calculateStats(dates, values);
 
         expect(statsSample.vol).toBeGreaterThan(statsPop.vol);

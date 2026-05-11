@@ -5,7 +5,9 @@ contextBridge.exposeInMainWorld('electron', {
         listDir: (path) => ipcRenderer.invoke('fs:list-dir', path),
         readFile: (path) => ipcRenderer.invoke('fs:read-file', path),
         writeFile: (path, content) => ipcRenderer.invoke('fs:write-file', path, content),
+        writeBinary: (path, base64) => ipcRenderer.invoke('fs:write-binary', path, base64),
         scanFolder: (path) => ipcRenderer.invoke('fs:scan-folder', path),
+        setRoot: (path) => ipcRenderer.invoke('fs:set-root', path),
     },
     dialog: {
         openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),

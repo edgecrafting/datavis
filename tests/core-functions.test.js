@@ -7,7 +7,7 @@ globalThis.localStorage = {
     clear() { this.store = {}; },
 };
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { registry } from '../src/services/functions/registry.js';
 import { useAppStore } from '../src/store/appStore.js';
 import '../src/services/functions/core.js';
@@ -111,5 +111,72 @@ describe('core functions', () => {
     it('registerFunction preserves descriptions', () => {
         const entry = registry.functions['ind'];
         expect(entry.description).toContain('Rebase to 1.0');
+    });
+
+    it('if returns a where cond > 0 else b (element-wise)', () => {
+        const fn = registry.get('if');
+        const cond = makeSeries('c', [1, 0, 1, 0]);
+        const a = makeSeries('a', [10, 20, 30, 40]);
+        const b = makeSeries('b', [100, 200, 300, 400]);
+        const result = fn(cond, a, b);
+        expect(result.values).toEqual([10, 200, 30, 400]);
+    });
+
+    it('gt returns 1 where a > b else 0', () => {
+        const fn = registry.get('gt');
+        const a = makeSeries('a', [1, 5, 3, 7]);
+        const b = makeSeries('b', [2, 4, 3, 8]);
+        const result = fn(a, b);
+        expect(result.values).toEqual([0, 1, 0, 0]);
+    });
+
+    it('percentile handles edge cases', () => {
+        const fn = registry.get('percentile');
+        const series = makeSeries('test', [1, 2, 3, 4, 5]);
+        const result = fn(series, 0.5, 5);
+        // Last value is median of [1,2,3,4,5] = 3
+        expect(result.values[4]).toBeCloseTo(3);
+    });
+
+    it('skew of symmetric series is ~0', () => {
+        const fn = registry.get('skew');
+        // Symmetric around mean
+        const series = makeSeries('test', Array.from({ length: 60 }, (_, i) => Math.sin(i / 5)));
+        const result = fn(series, 60);
+        expect(Math.abs(result.values[59])).toBeLessThan(0.5);
+    });
+
+    it('kurt of normal-ish series is finite', () => {
+        const fn = registry.get('kurt');
+        const series = makeSeries('test', Array.from({ length: 60 }, (_, i) => Math.sin(i / 7) + Math.cos(i / 11)));
+        const result = fn(series, 60);
+        expect(isFinite(result.values[59])).toBe(true);
+    });
+
+    it('monthly keeps the last value of each month', () => {
+        const fn = registry.get('monthly');
+        const dates = ['2024-01-05', '2024-01-15', '2024-01-31', '2024-02-10', '2024-02-28'];
+        const values = [10, 20, 30, 40, 50];
+        const result = fn({ name: 'test', dates, values });
+        expect(result.dates).toEqual(['2024-01-31', '2024-02-28']);
+        expect(result.values).toEqual([30, 50]);
+    });
+
+    it('yearly keeps the last value of each year', () => {
+        const fn = registry.get('yearly');
+        const dates = ['2022-01-01', '2022-12-31', '2023-06-15', '2024-01-01'];
+        const values = [1, 2, 3, 4];
+        const result = fn({ name: 'test', dates, values });
+        expect(result.dates).toEqual(['2022-12-31', '2023-06-15', '2024-01-01']);
+        expect(result.values).toEqual([2, 3, 4]);
+    });
+
+    it('weekly groups by ISO week', () => {
+        const fn = registry.get('weekly');
+        // Monday + Friday of same ISO week should collapse
+        const dates = ['2024-01-01', '2024-01-05', '2024-01-08'];
+        const values = [1, 2, 3];
+        const result = fn({ name: 'test', dates, values });
+        expect(result.values).toEqual([2, 3]);
     });
 });

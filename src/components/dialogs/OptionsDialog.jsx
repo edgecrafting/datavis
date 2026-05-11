@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DialogBase from './DialogBase.jsx';
 import { useAppStore } from '../../store/appStore.js';
+import { setStatsConfig } from '../../services/stats/config.js';
+import { usePlotStore } from '../../store/plotStore.js';
 
 function loadOptions() {
     try {
         const stored = localStorage.getItem('plottoolOptions');
         if (stored) return JSON.parse(stored);
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     return {
         defaultRootPath: localStorage.getItem('lastRootPath') || 'C:\\Users\\haibi\\Python\\BBGDB',
         dateFormat: 'YYYY-MM-DD',
@@ -33,6 +35,10 @@ export default function OptionsDialog({ onClose }) {
             useAppStore.getState().setRootPath(options.defaultRootPath);
         }
         useAppStore.setState({ useSampleVariance: options.useSampleVariance });
+        // Update live stats config so recomputes use the new setting immediately.
+        setStatsConfig({ useSampleVariance: options.useSampleVariance });
+        // Trigger a recalc so stats refresh
+        usePlotStore.getState().requestEvaluation();
         onClose();
     };
 

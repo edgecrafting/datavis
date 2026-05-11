@@ -8,7 +8,15 @@ let savedRecentFiles = [];
 try {
     const stored = ls.getItem('recentFiles');
     if (stored) savedRecentFiles = JSON.parse(stored);
-} catch (e) { /* ignore */ }
+} catch { /* ignore */ }
+
+// Load tree categories from localStorage. Each category groups paths into
+// a logical bucket displayed above the real filesystem in the tree.
+let savedTreeCategories = [];
+try {
+    const stored = ls.getItem('treeCategories');
+    if (stored) savedTreeCategories = JSON.parse(stored);
+} catch { /* ignore */ }
 
 export const useAppStore = create((set) => ({
     // Default path to BBGDB
@@ -21,7 +29,13 @@ export const useAppStore = create((set) => ({
     selectedSeriesKey: null,
 
     // UI State
-    sidebarWidth: 300,
+    sidebarWidth: (() => {
+        try {
+            const v = ls.getItem('sidebarWidth');
+            const n = v ? parseInt(v, 10) : NaN;
+            return Number.isFinite(n) && n >= 150 && n <= 600 ? n : 220;
+        } catch { return 220; }
+    })(),
     isExpressionPanelOpen: true,
 
     // Toolbar/Panel visibility
@@ -47,6 +61,13 @@ export const useAppStore = create((set) => ({
 
     // Recent files
     recentFiles: savedRecentFiles,
+
+    // Currently-open workspace path (null if unsaved)
+    currentWorkspacePath: null,
+
+    // Tree categories — logical groupings shown above the filesystem.
+    // Shape: [{ name: string, items: [{ label: string, path: string }] }]
+    treeCategories: savedTreeCategories,
 
     // Statistics preferences
     useSampleVariance: (() => {
@@ -85,4 +106,32 @@ export const useAppStore = create((set) => ({
     clearHover: () => set({ hoverDate: null, hoverValue: null }),
     setStatusMessage: (msg) => set({ statusMessage: msg }),
     closeAllDialogs: () => set({ activeDialog: null }),
+
+    // Tree category actions — persist to localStorage on each change.
+    addTreeCategory: (name) => set((state) => {
+        const next = [...state.treeCategories, { name, items: [] }];
+        try { ls.setItem('treeCategories', JSON.stringify(next)); } catch { /* ignore */ }
+        return { treeCategories: next };
+    }),
+    removeTreeCategory: (name) => set((state) => {
+        const next = state.treeCategories.filter(c => c.name !== name);
+        try { ls.setItem('treeCategories', JSON.stringify(next)); } catch { /* ignore */ }
+        return { treeCategories: next };
+    }),
+    addItemToCategory: (categoryName, item) => set((state) => {
+        const next = state.treeCategories.map(c =>
+            c.name === categoryName
+                ? { ...c, items: c.items.some(i => i.path === item.path) ? c.items : [...c.items, item] }
+                : c
+        );
+        try { ls.setItem('treeCategories', JSON.stringify(next)); } catch { /* ignore */ }
+        return { treeCategories: next };
+    }),
+    removeItemFromCategory: (categoryName, path) => set((state) => {
+        const next = state.treeCategories.map(c =>
+            c.name === categoryName ? { ...c, items: c.items.filter(i => i.path !== path) } : c
+        );
+        try { ls.setItem('treeCategories', JSON.stringify(next)); } catch { /* ignore */ }
+        return { treeCategories: next };
+    }),
 }));

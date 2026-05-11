@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useCallback } from 'react';
 import DialogBase from './DialogBase.jsx';
 import { useDataStore } from '../../store/dataStore.js';
 import { dateAlignMultiple } from '../../services/expression/dateAlign.js';
@@ -47,7 +47,6 @@ export default function DataViewer({ merged = false, onClose }) {
     const names = Object.keys(tableData.columns);
     const totalRows = tableData.dates.length;
     const containerHeight = 400;
-    const totalHeight = totalRows * ROW_HEIGHT;
 
     // Calculate visible window
     const startIdx = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_ROWS);

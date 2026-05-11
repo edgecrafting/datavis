@@ -3,14 +3,14 @@ import DialogBase from './DialogBase.jsx';
 
 export default function AboutDialog({ onClose }) {
     return (
-        <DialogBase title="About PlotTool" onClose={onClose} width={320} footer={
+        <DialogBase title="About DataVis" onClose={onClose} width={320} footer={
             <div className="dialog-footer">
                 <button className="win-button" onClick={onClose}>OK</button>
             </div>
         }>
             <div style={{ textAlign: 'center', padding: '16px 8px' }}>
                 <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
-                    PlotTool
+                    DataVis
                 </div>
                 <div style={{ fontSize: '11px', color: '#666', marginBottom: '12px' }}>
                     Version 1.0.0

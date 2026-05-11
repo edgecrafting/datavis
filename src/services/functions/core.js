@@ -1,7 +1,8 @@
-import { registerFunction, registry } from './registry';
+import { registerFunction } from './registry';
 import { withStats } from '../stats/withStats.js';
 import { useAppStore } from '../../store/appStore.js';
 import { parseDateInput, normalizeDate } from '../dates/normalize.js';
+import { getStatsConfig } from '../stats/config.js';
 
 // Core Financial Functions
 
@@ -155,6 +156,7 @@ registerFunction('abs', (series) => {
 }, "Absolute value");
 
 // btob: Load series from a local file path
+// eslint-disable-next-line no-unused-vars
 registerFunction('btob', (pathArg, format) => {
     // btob is synchronous in the function registry but file loading is async.
     // This needs to be pre-resolved before the expression evaluator runs.
@@ -249,11 +251,7 @@ registerFunction('rstd', (series, period = 20) => {
         }
         if (window.length < 2) { result.push(null); continue; }
         const mean = window.reduce((a, b) => a + b, 0) / window.length;
-        let useSample = true;
-        try {
-            const v = localStorage.getItem('useSampleVariance');
-            if (v !== null) useSample = JSON.parse(v);
-        } catch { /* default to sample */ }
+        const useSample = getStatsConfig().useSampleVariance;
         const divisor = useSample && window.length > 1 ? window.length - 1 : window.length;
         const variance = window.reduce((a, b) => a + (b - mean) ** 2, 0) / divisor;
         result.push(Math.sqrt(variance));
@@ -410,6 +408,195 @@ registerFunction('vol', (series, period = 20) => {
     }
     return withStats({ ...series, name: `vol(${series.name}, ${period})`, values: result });
 }, "Rolling annualized volatility");
+
+// === Resampling (keep last value per bucket) ===
+function bucketKey(dateStr, period) {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    if (period === 'yearly') return String(y);
+    if (period === 'monthly') return `${y}-${String(m).padStart(2, '0')}`;
+    if (period === 'weekly') {
+        // ISO week — Thursday of the week determines the year/week
+        const target = new Date(d);
+        target.setHours(0, 0, 0, 0);
+        target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
+        const week1 = new Date(target.getFullYear(), 0, 4);
+        const week = 1 + Math.round(((target - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+        return `${target.getFullYear()}-W${String(week).padStart(2, '0')}`;
+    }
+    return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function resampleLast(series, period) {
+    if (!series || !series.dates || series.dates.length === 0) return null;
+    const buckets = new Map(); // key → { date, value }
+    const order = [];
+    for (let i = 0; i < series.dates.length; i++) {
+        const key = bucketKey(series.dates[i], period);
+        if (!buckets.has(key)) order.push(key);
+        buckets.set(key, { date: series.dates[i], value: series.values[i] });
+    }
+    const dates = order.map(k => buckets.get(k).date);
+    const values = order.map(k => buckets.get(k).value);
+    return withStats({
+        ...series,
+        name: `${period}(${series.name})`,
+        dates,
+        values,
+    });
+}
+
+registerFunction('weekly', (s) => resampleLast(s, 'weekly'), "Resample to last value per ISO week");
+registerFunction('monthly', (s) => resampleLast(s, 'monthly'), "Resample to last value per month");
+registerFunction('yearly', (s) => resampleLast(s, 'yearly'), "Resample to last value per year");
+registerFunction('daily', (s) => s, "No-op (series is already daily)");
+
+// === Conditional ===
+// if(cond, a, b): element-wise — wherever cond > 0, use a; else use b.
+// Args can be series or constants. Series args are aligned by index (caller
+// should pre-align via dateAlign / arithmetic ops if needed).
+registerFunction('if', (cond, a, b) => {
+    const asArr = (x) => (x?.values ?? null);
+    const isSeries = (x) => x && Array.isArray(x.values);
+    const len = Math.max(
+        isSeries(cond) ? cond.values.length : 0,
+        isSeries(a) ? a.values.length : 0,
+        isSeries(b) ? b.values.length : 0,
+    );
+    if (len === 0) return null;
+    const getAt = (x, i) => {
+        if (isSeries(x)) return x.values[i] ?? null;
+        return typeof x === 'number' ? x : (x?.value ?? null);
+    };
+    const condArr = asArr(cond);
+    const result = new Array(len);
+    for (let i = 0; i < len; i++) {
+        const c = condArr ? condArr[i] : (typeof cond === 'number' ? cond : 0);
+        if (c === null) { result[i] = null; continue; }
+        result[i] = c > 0 ? getAt(a, i) : getAt(b, i);
+    }
+    const ref = isSeries(cond) ? cond : (isSeries(a) ? a : b);
+    const nameOf = (x) => isSeries(x) ? x.name : String(x?.value ?? x);
+    return withStats({
+        ...ref,
+        name: `if(${nameOf(cond)}, ${nameOf(a)}, ${nameOf(b)})`,
+        values: result,
+    });
+}, "Element-wise conditional: if(cond, a, b)");
+
+// === Comparison operators returning 0/1 series ===
+function makeCompare(opName, fn) {
+    return (a, b) => {
+        const aIsSeries = a && Array.isArray(a.values);
+        const bIsSeries = b && Array.isArray(b.values);
+        const len = aIsSeries ? a.values.length : (bIsSeries ? b.values.length : 0);
+        if (len === 0) return null;
+        const getA = (i) => aIsSeries ? a.values[i] : (typeof a === 'number' ? a : a?.value);
+        const getB = (i) => bIsSeries ? b.values[i] : (typeof b === 'number' ? b : b?.value);
+        const result = new Array(len);
+        for (let i = 0; i < len; i++) {
+            const av = getA(i), bv = getB(i);
+            if (av === null || bv === null || av === undefined || bv === undefined) {
+                result[i] = null;
+            } else {
+                result[i] = fn(av, bv) ? 1 : 0;
+            }
+        }
+        const ref = aIsSeries ? a : b;
+        const nameOf = (x) => (x?.name) ?? String(x?.value ?? x);
+        return withStats({ ...ref, name: `${nameOf(a)} ${opName} ${nameOf(b)}`, values: result });
+    };
+}
+registerFunction('gt', makeCompare('>', (a, b) => a > b), "Greater than: gt(a, b) → 0/1");
+registerFunction('lt', makeCompare('<', (a, b) => a < b), "Less than: lt(a, b) → 0/1");
+registerFunction('gte', makeCompare('>=', (a, b) => a >= b), "Greater-or-equal: gte(a, b) → 0/1");
+registerFunction('lte', makeCompare('<=', (a, b) => a <= b), "Less-or-equal: lte(a, b) → 0/1");
+registerFunction('eq', makeCompare('==', (a, b) => a === b), "Equal: eq(a, b) → 0/1");
+
+// === Rolling Percentile ===
+registerFunction('percentile', (series, p = 0.5, period = 252) => {
+    if (!series) return null;
+    p = Math.max(0, Math.min(1, p));
+    period = Math.round(period);
+    const values = series.values;
+    const result = new Array(values.length).fill(null);
+    for (let i = 0; i < values.length; i++) {
+        if (i < period - 1) continue;
+        const window = [];
+        for (let j = 0; j < period; j++) {
+            const v = values[i - j];
+            if (v !== null && !isNaN(v)) window.push(v);
+        }
+        if (window.length === 0) continue;
+        window.sort((x, y) => x - y);
+        const idx = (window.length - 1) * p;
+        const lo = Math.floor(idx);
+        const hi = Math.ceil(idx);
+        result[i] = lo === hi ? window[lo] : window[lo] + (window[hi] - window[lo]) * (idx - lo);
+    }
+    return withStats({ ...series, name: `percentile(${series.name}, ${p}, ${period})`, values: result });
+}, "Rolling percentile (p in [0,1])");
+
+// === Rolling Skewness ===
+registerFunction('skew', (series, period = 60) => {
+    if (!series) return null;
+    period = Math.round(period);
+    const values = series.values;
+    const result = new Array(values.length).fill(null);
+    for (let i = 0; i < values.length; i++) {
+        if (i < period - 1) continue;
+        const window = [];
+        for (let j = 0; j < period; j++) {
+            const v = values[i - j];
+            if (v !== null && !isNaN(v)) window.push(v);
+        }
+        if (window.length < 3) continue;
+        const mean = window.reduce((a, b) => a + b, 0) / window.length;
+        let m2 = 0, m3 = 0;
+        for (const v of window) {
+            const d = v - mean;
+            m2 += d * d;
+            m3 += d * d * d;
+        }
+        const n = window.length;
+        m2 /= n; m3 /= n;
+        const std = Math.sqrt(m2);
+        result[i] = std > 0 ? m3 / (std * std * std) : 0;
+    }
+    return withStats({ ...series, name: `skew(${series.name}, ${period})`, values: result });
+}, "Rolling skewness");
+
+// === Rolling Kurtosis (excess) ===
+registerFunction('kurt', (series, period = 60) => {
+    if (!series) return null;
+    period = Math.round(period);
+    const values = series.values;
+    const result = new Array(values.length).fill(null);
+    for (let i = 0; i < values.length; i++) {
+        if (i < period - 1) continue;
+        const window = [];
+        for (let j = 0; j < period; j++) {
+            const v = values[i - j];
+            if (v !== null && !isNaN(v)) window.push(v);
+        }
+        if (window.length < 4) continue;
+        const mean = window.reduce((a, b) => a + b, 0) / window.length;
+        let m2 = 0, m4 = 0;
+        for (const v of window) {
+            const d = v - mean;
+            const d2 = d * d;
+            m2 += d2;
+            m4 += d2 * d2;
+        }
+        const n = window.length;
+        m2 /= n; m4 /= n;
+        result[i] = m2 > 0 ? (m4 / (m2 * m2)) - 3 : 0; // excess kurtosis
+    }
+    return withStats({ ...series, name: `kurt(${series.name}, ${period})`, values: result });
+}, "Rolling excess kurtosis");
 
 // Year-over-Year change
 registerFunction('yoy', (series) => {
