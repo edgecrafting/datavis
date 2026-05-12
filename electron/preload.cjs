@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electron', {
         writeBinary: (path, base64) => ipcRenderer.invoke('fs:write-binary', path, base64),
         scanFolder: (path) => ipcRenderer.invoke('fs:scan-folder', path),
         setRoot: (path) => ipcRenderer.invoke('fs:set-root', path),
+        writeTemp: (filename, content) => ipcRenderer.invoke('fs:write-temp', filename, content),
     },
     dialog: {
         openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
@@ -17,7 +18,11 @@ contextBridge.exposeInMainWorld('electron', {
     window: {
         setTitle: (title) => ipcRenderer.invoke('window:set-title', title),
         print: () => ipcRenderer.invoke('window:print'),
+        printPreview: () => ipcRenderer.invoke('window:print-preview'),
         close: () => ipcRenderer.invoke('window:close'),
+    },
+    shell: {
+        openExternalFile: (path) => ipcRenderer.invoke('shell:open-external-file', path),
     },
     platform: process.platform
 });

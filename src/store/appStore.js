@@ -44,6 +44,12 @@ export const useAppStore = create((set) => ({
     showPlotTools: true,
     showStudyBar: false,
     showExpressionWindow: true,
+    showLineNumbers: (() => {
+        try {
+            const v = ls.getItem('showLineNumbers');
+            return v === null ? true : JSON.parse(v);
+        } catch { return true; }
+    })(),
 
     // Chart state
     plotTitle: '',
@@ -64,6 +70,12 @@ export const useAppStore = create((set) => ({
 
     // Currently-open workspace path (null if unsaved)
     currentWorkspacePath: null,
+
+    // Locate / spotlight: when set, all other series render at low opacity.
+    spotlightSeries: null,
+
+    // Fixed chart size override (used by Format > Change Plot Size). Null = autosize.
+    chartSize: null,  // { width, height } or null
 
     // Tree categories — logical groupings shown above the filesystem.
     // Shape: [{ name: string, items: [{ label: string, path: string }] }]

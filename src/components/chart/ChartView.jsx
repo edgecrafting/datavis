@@ -26,6 +26,8 @@ export default function ChartView() {
     const setHover = useAppStore(s => s.setHover);
     const decimals = useAppStore(s => s.decimals);
     const currencyCode = useAppStore(s => s.currencyCode);
+    const spotlight = useAppStore(s => s.spotlightSeries);
+    const chartSize = useAppStore(s => s.chartSize);
     const clearHover = useAppStore(s => s.clearHover);
     const plotType = usePlotStore(s => s.plots[s.activePlotId]?.plotType) || 'timeseries';
     const axisConfigRaw = usePlotStore(s => s.plots[s.activePlotId]?.axisConfig);
@@ -238,6 +240,7 @@ export default function ChartView() {
             if (!globalMinDate || dates[0] < globalMinDate) globalMinDate = dates[0];
             if (!globalMaxDate || dates[dates.length - 1] > globalMaxDate) globalMaxDate = dates[dates.length - 1];
 
+            const isSpotlit = spotlight && key !== spotlight;
             const trace = {
                 x: dates,
                 y: values,
@@ -248,6 +251,7 @@ export default function ChartView() {
                     dash: config.lineStyle && config.lineStyle !== 'solid' ? config.lineStyle : undefined,
                 },
                 marker: { color },
+                opacity: isSpotlit ? 0.15 : 1,
             };
 
             if (plotType === 'histogram') {
@@ -407,7 +411,7 @@ export default function ChartView() {
 
         return { plotData: data, layout: chartLayout };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [seriesMap, plotTitle, plotType, axisConfig, titles, styleConfig, userAnnotations, seriesOrder, decimals, currencyCode]);
+    }, [seriesMap, plotTitle, plotType, axisConfig, titles, styleConfig, userAnnotations, seriesOrder, decimals, currencyCode, spotlight]);
 
     if (seriesKeys.length === 0) {
         return (
@@ -421,15 +425,24 @@ export default function ChartView() {
         );
     }
 
+    // Fixed plot dimensions override the autosize behavior. Container scrolls.
+    const fixedSize = chartSize && chartSize.width && chartSize.height;
+    const plotStyle = fixedSize
+        ? { width: `${chartSize.width}px`, height: `${chartSize.height}px` }
+        : { width: '100%', height: '100%' };
+    const containerStyle = fixedSize
+        ? { width: '100%', height: '100%', position: 'relative', overflow: 'auto' }
+        : { width: '100%', height: '100%', position: 'relative' };
+
     return (
-        <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <div ref={containerRef} style={containerStyle}>
             <Plot
                 ref={plotRef}
                 data={plotData}
                 layout={layout}
-                useResizeHandler={true}
-                style={{ width: '100%', height: '100%' }}
-                config={{ responsive: true, displayModeBar: false, scrollZoom: true }}
+                useResizeHandler={!fixedSize}
+                style={plotStyle}
+                config={{ responsive: !fixedSize, displayModeBar: false, scrollZoom: true }}
                 onHover={handleHover}
                 onUnhover={handleUnhover}
                 onRelayout={handleRelayout}

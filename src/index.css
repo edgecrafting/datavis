@@ -469,7 +469,7 @@ body {
 }
 
 .expression-line-indicators {
-  width: 16px;
+  width: 28px;
   background: var(--bg-color);
   border-top: 1px solid var(--dark-shadow);
   border-left: 1px solid var(--dark-shadow);
@@ -480,17 +480,31 @@ body {
 }
 
 .line-indicator {
-  height: 16px;
+  height: 17px;
   font-size: 9px;
+  text-align: right;
+  padding-right: 3px;
+  color: #888;
+  line-height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.line-indicator .line-number {
+  font-family: Consolas, 'Courier New', monospace;
+  color: #aaa;
+}
+
+.line-indicator .line-r {
+  color: #cc0000;
   font-weight: bold;
-  text-align: center;
-  color: transparent;
-  line-height: 16px;
+  font-size: 10px;
 }
 
 .line-indicator.on-right {
-  color: #ff0000;
-  background: #ffe0e0;
+  background: rgba(225, 87, 89, 0.08);
 }
 
 .expression-editor {
@@ -607,7 +621,7 @@ body {
    STATS TABLE
    ============================================ */
 .stats-table-container {
-  height: 110px;
+  height: 95px;
   min-height: 50px;
   overflow: auto;
   border-top: 1px solid var(--dark-shadow);

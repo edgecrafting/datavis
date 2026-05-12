@@ -33,6 +33,9 @@ import TipOfTheDay from './components/dialogs/TipOfTheDay';
 import SeriesProperties from './components/dialogs/SeriesProperties';
 import PlotProperties from './components/dialogs/PlotProperties';
 import PopularSymbols from './components/dialogs/PopularSymbols';
+import ExprProperties from './components/dialogs/ExprProperties';
+import LocateDialog from './components/dialogs/LocateDialog';
+import PlotSizeDialog from './components/dialogs/PlotSizeDialog';
 
 // Register commands once at module level
 registerAllCommands(useAppStore, useDataStore, usePlotStore);
@@ -162,6 +165,9 @@ function App() {
             )}
             {activeDialog === 'plotProperties' && <PlotProperties onClose={closeDialog} />}
             {activeDialog === 'popularSymbols' && <PopularSymbols onClose={closeDialog} />}
+            {activeDialog === 'exprProperties' && <ExprProperties onClose={closeDialog} />}
+            {activeDialog === 'locate' && <LocateDialog onClose={closeDialog} />}
+            {activeDialog === 'plotSize' && <PlotSizeDialog onClose={closeDialog} />}
         </div>
     );
 }

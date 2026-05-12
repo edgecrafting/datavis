@@ -138,6 +138,7 @@ const ExpressionPanel = () => {
     const textareaRef = useRef(null);
     const { setSeriesMap, clearAll } = useDataStore();
     const { plotTitle, setPlotTitle, startDate, setStartDate, endDate, setEndDate } = useAppStore();
+    const showLineNumbers = useAppStore(s => s.showLineNumbers);
 
     // Compile suggestion pool from cache + function registry
     const seriesCache = useDataStore(s => s.seriesCache);
@@ -449,13 +450,16 @@ const ExpressionPanel = () => {
             {error && <div style={{ color: 'red', fontSize: '10px', padding: '2px' }}>{error}</div>}
 
             <div className="expression-editor-wrapper">
-                <div className="expression-line-indicators">
-                    {lines.map((_, i) => (
-                        <div key={i} className={`line-indicator ${rightAxisLines.has(i) ? 'on-right' : ''}`}>
-                            {rightAxisLines.has(i) ? 'R' : ''}
-                        </div>
-                    ))}
-                </div>
+                {showLineNumbers && (
+                    <div className="expression-line-indicators">
+                        {lines.map((_, i) => (
+                            <div key={i} className={`line-indicator ${rightAxisLines.has(i) ? 'on-right' : ''}`}>
+                                <span className="line-number">{i + 1}</span>
+                                {rightAxisLines.has(i) && <span className="line-r">R</span>}
+                            </div>
+                        ))}
+                    </div>
+                )}
                 <div className="expression-editor" style={{ position: 'relative' }}>
                     <pre ref={highlightRef} className="expression-highlight" aria-hidden="true">
                         {lines.map((line, lineIdx) => {

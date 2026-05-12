@@ -317,6 +317,43 @@ ipcMain.handle('window:print', async () => {
     }
 });
 
+// Print Preview: render the window contents to a PDF in the temp folder and open
+// it with the OS default PDF viewer.
+ipcMain.handle('window:print-preview', async () => {
+    if (!mainWindow) return null;
+    try {
+        const buf = await mainWindow.webContents.printToPDF({
+            landscape: true,
+            printBackground: true,
+            pageSize: 'Letter',
+        });
+        const tmp = path.join(app.getPath('temp'), `datavis-preview-${Date.now()}.pdf`);
+        await fs.promises.writeFile(tmp, buf);
+        await shell.openPath(tmp);
+        return tmp;
+    } catch (err) {
+        throw new Error(`Print preview failed: ${err.message}`);
+    }
+});
+
+// Open an arbitrary file path with its default application (used for Excel Chart).
+ipcMain.handle('shell:open-external-file', async (event, filePath) => {
+    if (!filePath || typeof filePath !== 'string') throw new Error('Invalid path');
+    return shell.openPath(filePath);
+});
+
+// Write to a temp file (returns the path); used for "open in default app" workflows.
+ipcMain.handle('fs:write-temp', async (event, filename, content) => {
+    if (typeof content !== 'string') throw new Error('Content must be a string');
+    if (content.length > MAX_FILE_SIZE) throw new Error('Content too large');
+    const safeName = String(filename || 'datavis-tmp.txt').replace(/[^A-Za-z0-9_.-]/g, '_');
+    const tmp = path.join(app.getPath('temp'), `${Date.now()}-${safeName}`);
+    await fs.promises.writeFile(tmp, content, 'utf-8');
+    // Auto-allow this directory so future reads/writes work.
+    allowedRoots.add(path.dirname(tmp));
+    return tmp;
+});
+
 ipcMain.handle('window:close', async () => {
     if (mainWindow) {
         mainWindow.close();

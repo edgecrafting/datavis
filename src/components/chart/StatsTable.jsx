@@ -5,8 +5,6 @@ import { useAppStore } from '../../store/appStore.js';
 import { getSeriesColor } from '../../services/chart/colors.js';
 import { dateAlignMultiple } from '../../services/expression/dateAlign.js';
 
-
-
 function formatPct(val) {
     if (val === null || val === undefined || isNaN(val)) return '-';
     return (val * 100).toFixed(1) + '%';
@@ -17,33 +15,10 @@ function formatNum(val, decimals = 4) {
     return val.toFixed(decimals);
 }
 
-function formatLast(val, decimals = 4) {
-    if (val === null || val === undefined || isNaN(val)) return '-';
-    return val.toFixed(decimals);
-}
-
-function shortDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${d.getDate()}${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
-}
-
-function lastNonNull(values) {
-    if (!values) return null;
-    for (let i = values.length - 1; i >= 0; i--) {
-        if (values[i] !== null && !isNaN(values[i])) return values[i];
-    }
-    return null;
-}
-
 export default function StatsTable() {
     const seriesMap = useDataStore(s => s.seriesMap);
     const toggleSeries = usePlotStore(s => s.setSeriesConfig);
     const seriesOrder = usePlotStore(s => s.plots[s.activePlotId]?.seriesOrder) || [];
-    const decimals = useAppStore(s => s.decimals);
-    const currencyCode = useAppStore(s => s.currencyCode);
     const [contextMenu, setContextMenu] = useState(null); // { x, y, key }
     const [dragIdx, setDragIdx] = useState(null);
     const [dropTargetIdx, setDropTargetIdx] = useState(null);
@@ -171,10 +146,6 @@ export default function StatsTable() {
                         <th className="stats-header">MaxDD</th>
                         <th className="stats-header">MinR1</th>
                         <th className="stats-header">MaxR1</th>
-                        <th className="stats-header">Last</th>
-                        <th className="stats-header">N</th>
-                        <th className="stats-header">Start</th>
-                        <th className="stats-header">End</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -185,10 +156,6 @@ export default function StatsTable() {
                         const config = series.config || {};
 
                         if (config.hidden) return null;
-                        const last = lastNonNull(series.values);
-                        const points = series.values?.length || 0;
-                        const startDate = series.dates?.[0];
-                        const endDate = series.dates?.[series.dates.length - 1];
                         const isDropTarget = dropTargetIdx === index && dragIdx !== index;
 
                         return (
@@ -226,10 +193,6 @@ export default function StatsTable() {
                                 <td className="stats-cell stats-num">{formatPct(stats.maxDD)}</td>
                                 <td className="stats-cell stats-num">{formatPct(stats.minR1)}</td>
                                 <td className="stats-cell stats-num">{formatPct(stats.maxR1)}</td>
-                                <td className="stats-cell stats-num">{currencyCode && currencyCode !== '%' ? currencyCode : ''}{formatLast(last, decimals)}{currencyCode === '%' ? '%' : ''}</td>
-                                <td className="stats-cell stats-num">{points}</td>
-                                <td className="stats-cell stats-num">{shortDate(startDate)}</td>
-                                <td className="stats-cell stats-num">{shortDate(endDate)}</td>
                             </tr>
                         );
                     })}

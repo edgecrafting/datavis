@@ -202,6 +202,60 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         }
     });
 
+    // Build a human-readable summary of the active plot for sharing via mail.
+    const buildPlotSummary = () => {
+        const plot = getPlot()?.getActivePlot();
+        const seriesMap = getData().seriesMap;
+        const names = Object.keys(seriesMap);
+        const app = getApp();
+        const title = app.plotTitle || plot?.name || 'Plot';
+        const start = app.appliedStartDate || '(none)';
+        const end = app.appliedEndDate || '(latest)';
+        const lines = [
+            `DataVis chart: ${title}`,
+            '',
+            `Date range: ${start} -> ${end}`,
+            `Series (${names.length}):`,
+        ];
+        names.forEach((k, i) => {
+            const s = seriesMap[k];
+            const st = s.stats || {};
+            const pct = (v) => (v == null || isNaN(v) ? '-' : (v * 100).toFixed(1) + '%');
+            lines.push(`  ${i + 1}. ${s.name || k}`);
+            lines.push(`     AR=${pct(st.ar)}  Vol=${pct(st.vol)}  Sharpe=${(st.sharpe ?? 0).toFixed(2)}  MaxDD=${pct(st.maxDD)}`);
+        });
+        if (plot?.expressions) {
+            lines.push('', 'Expressions:', plot.expressions);
+        }
+        return lines.join('\n');
+    };
+
+    const openMailto = (recipient = '') => {
+        const subject = encodeURIComponent(`DataVis chart: ${getApp().plotTitle || 'Plot'}`);
+        const body = encodeURIComponent(buildPlotSummary());
+        const url = `mailto:${recipient}?subject=${subject}&body=${body}`;
+        // Use Electron's external opener if available; otherwise let the renderer handle it.
+        if (window.electron?.shell?.openExternalFile) {
+            // shell.openPath only opens local paths; use window.open for mailto since
+            // Electron's setWindowOpenHandler routes mailto: to shell.openExternal.
+            window.open(url);
+        } else {
+            window.location.href = url;
+        }
+    };
+
+    commandRegistry.register('file.mailTo', {
+        label: 'Mail to...',
+        handler: () => {
+            const to = prompt('Send chart summary to (email address):', '');
+            if (to !== null) openMailto(to);
+        }
+    });
+    commandRegistry.register('file.mailToSalesLead', {
+        label: 'Mail to Sales Lead',
+        handler: () => openMailto('sales@example.com')
+    });
+
     commandRegistry.register('file.exportData', {
         label: 'Export Data...',
         handler: async () => {
@@ -259,8 +313,22 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
             }
         }
     });
-    commandRegistry.register('file.printPreview', { label: 'Print Preview', handler: () => setStatus('Print Preview not implemented'), enabled: () => false });
-    commandRegistry.register('file.printSetup', { label: 'Print Setup...', handler: () => setStatus('Print Setup not implemented'), enabled: () => false });
+    commandRegistry.register('file.printPreview', {
+        label: 'Print Preview',
+        handler: async () => {
+            if (!window.electron?.window?.printPreview) {
+                setStatus('Print preview only works in the desktop app');
+                return;
+            }
+            try {
+                const path = await window.electron.window.printPreview();
+                setStatus(`Print preview opened: ${path}`);
+            } catch (err) {
+                setStatus(`Print preview failed: ${err.message}`);
+            }
+        }
+    });
+    commandRegistry.register('file.printSetup', { label: 'Print Setup...', handler: () => setStatus('Use your OS print dialog (Ctrl+P)'), enabled: () => false });
     commandRegistry.register('file.plotProperties', {
         label: 'Plot Properties...',
         handler: () => appStore.setState({ activeDialog: 'plotProperties' })
@@ -327,7 +395,23 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         }
     });
     commandRegistry.register('edit.paste', { label: 'Paste', shortcut: 'Ctrl+V', handler: () => document.execCommand('paste') });
-    commandRegistry.register('edit.exprProperties', { label: 'Expr Properties', handler: () => setStatus('Not implemented'), enabled: () => false });
+    commandRegistry.register('edit.properties', {
+        label: 'Properties...',
+        handler: () => appStore.setState({ activeDialog: 'plotProperties' })
+    });
+    commandRegistry.register('edit.exprProperties', {
+        label: 'Expr Properties...',
+        handler: () => {
+            // Capture which line the cursor is on by reading the active textarea.
+            const ta = document.querySelector('.expression-textarea');
+            let line = 0;
+            if (ta) {
+                const text = ta.value.substring(0, ta.selectionStart);
+                line = text.split('\n').length - 1;
+            }
+            appStore.setState({ activeDialog: 'exprProperties', exprPropertiesLine: line });
+        }
+    });
     commandRegistry.register('edit.sortExpressions', {
         label: 'Sort Expressions',
         handler: () => {
@@ -483,6 +567,45 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         label: 'Show Expression Window',
         handler: () => appStore.setState(s => ({ showExpressionWindow: !s.showExpressionWindow })),
         checked: () => getApp().showExpressionWindow
+    });
+    commandRegistry.register('format.setExpressions', {
+        label: 'Set Expressions (save as study)...',
+        handler: async () => {
+            const plot = getPlot()?.getActivePlot();
+            if (!plot?.expressions?.trim()) {
+                setStatus('No expressions to save');
+                return;
+            }
+            const name = prompt('Study name:', plot.name || 'My Study');
+            if (!name?.trim()) return;
+            const description = prompt('Description (optional):', '') || '';
+            try {
+                const { addStudy } = await import('../study/engine.js');
+                // Convert series references to $1, $2, ... so the study is generic.
+                // Skip the auto-template feature for now — save expression as-is.
+                addStudy({
+                    name: name.trim(),
+                    template: plot.expressions,
+                    description: description.trim(),
+                });
+                setStatus(`Saved study: ${name}`);
+            } catch (err) {
+                setStatus(`Save study failed: ${err.message}`);
+            }
+        }
+    });
+    commandRegistry.register('format.changePlotSize', {
+        label: 'Change Plot Size...',
+        handler: () => appStore.setState({ activeDialog: 'plotSize' })
+    });
+    commandRegistry.register('format.lineNumbers', {
+        label: 'Line Numbers',
+        handler: () => appStore.setState(s => {
+            const next = !s.showLineNumbers;
+            try { localStorage.setItem('showLineNumbers', JSON.stringify(next)); } catch { /* ignore */ }
+            return { showLineNumbers: next };
+        }),
+        checked: () => getApp().showLineNumbers
     });
 
     // === INSERT ===
@@ -669,6 +792,69 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         label: 'Slang Examples',
         shortcut: 'F7',
         handler: () => appStore.setState({ activeDialog: 'studyPanel' })
+    });
+    commandRegistry.register('tools.resetOutputs', {
+        label: 'Reset Outputs',
+        handler: () => {
+            if (!confirm('Reset will clear all loaded data, annotations, and chart zoom. Continue?')) return;
+            const data = getData();
+            data.clearAll();
+            data.clearCache();
+            const ps = getPlot();
+            if (ps) {
+                ps.clearAnnotations();
+                ps.requestChartAction('zoomBackOut');
+            }
+            appStore.setState({
+                spotlightSeries: null,
+                zoomStartDate: null,
+                zoomEndDate: null,
+                hoverDate: null,
+                hoverValue: null,
+                appliedStartDate: '',
+                appliedEndDate: '',
+            });
+            setStatus('All outputs reset');
+        }
+    });
+    commandRegistry.register('tools.locate', {
+        label: 'Locate...',
+        handler: () => appStore.setState({ activeDialog: 'locate' })
+    });
+    commandRegistry.register('tools.excelChart', {
+        label: 'Excel Chart',
+        handler: async () => {
+            const series = Object.values(getData().seriesMap);
+            if (series.length === 0) {
+                setStatus('No data to open');
+                return;
+            }
+            if (!window.electron?.fs?.writeTemp || !window.electron?.shell?.openExternalFile) {
+                setStatus('Excel handoff only works in the desktop app');
+                return;
+            }
+            try {
+                const { dateAlignMultiple } = await import('../expression/dateAlign.js');
+                const aligned = dateAlignMultiple(series);
+                const names = Object.keys(aligned.columns);
+                const escape = (v) => {
+                    if (v === null || v === undefined) return '';
+                    const s = String(v);
+                    return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+                };
+                let text = ['Date', ...names].map(escape).join(',') + '\n';
+                for (let i = 0; i < aligned.dates.length; i++) {
+                    const row = [aligned.dates[i], ...names.map(n => aligned.columns[n][i] ?? '')];
+                    text += row.map(escape).join(',') + '\n';
+                }
+                const safeName = (getPlot()?.getActivePlot()?.name || 'plot').replace(/[^\w-]/g, '_');
+                const tmp = await window.electron.fs.writeTemp(`${safeName}.csv`, text);
+                await window.electron.shell.openExternalFile(tmp);
+                setStatus(`Opened in default CSV app: ${tmp}`);
+            } catch (err) {
+                setStatus(`Excel handoff failed: ${err.message}`);
+            }
+        }
     });
     commandRegistry.register('tools.reloadSlangLibrary', {
         label: 'Reload Slang Library',
