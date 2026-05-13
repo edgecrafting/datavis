@@ -72,7 +72,7 @@ export function deserializeWorkspace(data) {
         throw new Error('Invalid workspace file format');
     }
     if (data.version > CURRENT_VERSION) {
-        throw new Error(`Workspace version ${data.version} is newer than supported (${CURRENT_VERSION}). Update DataVis.`);
+        throw new Error(`Workspace version ${data.version} is newer than supported (${CURRENT_VERSION}). Update DataVisual.`);
     }
 
     // Apply migrations in sequence

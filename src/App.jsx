@@ -52,9 +52,9 @@ function App() {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // Sync OS window title to the active plot — matches target "DataVis - <plotName>"
+    // Sync OS window title to the active plot — matches target "DataVisual - <plotName>"
     useEffect(() => {
-        const title = activePlotName ? `DataVis - ${activePlotName}` : 'DataVis';
+        const title = activePlotName ? `DataVisual - ${activePlotName}` : 'DataVisual';
         document.title = title;
         if (window.electron?.window?.setTitle) {
             window.electron.window.setTitle(title);

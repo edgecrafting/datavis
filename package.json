@@ -1,5 +1,5 @@
 {
-  "name": "datavis-app",
+  "name": "datavisual-app",
   "private": true,
   "version": "1.0.0",
   "description": "Electron + React financial time series visualization tool",
@@ -47,8 +47,8 @@
     "wait-on": "^9.0.3"
   },
   "build": {
-    "appId": "com.datavis.app",
-    "productName": "DataVis",
+    "appId": "com.datavisual.app",
+    "productName": "DataVisual",
     "files": [
       "dist/**/*",
       "electron/**/*"

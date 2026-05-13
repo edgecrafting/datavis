@@ -10,14 +10,14 @@ export default function AboutDialog({ onClose }) {
     const cleanVer = (v) => (v || '').replace(/^[\^~]/, '');
 
     return (
-        <DialogBase title="About DataVis" onClose={onClose} width={380} footer={
+        <DialogBase title="About DataVisual" onClose={onClose} width={380} footer={
             <div className="dialog-footer">
                 <button className="win-button" onClick={onClose}>OK</button>
             </div>
         }>
             <div style={{ textAlign: 'center', padding: '12px 8px' }}>
                 <div style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '4px', color: '#1a4f8b' }}>
-                    DataVis
+                    DataVisual
                 </div>
                 <div style={{ fontSize: '11px', color: '#666', marginBottom: '12px' }}>
                     Version {VERSION}

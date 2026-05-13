@@ -125,7 +125,7 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
                     if (!window.electron?.dialog?.openFile) return;
                     filePath = await window.electron.dialog.openFile({
                         filters: [
-                            { name: 'DataVis Workspace', extensions: ['ptw'] },
+                            { name: 'DataVisual Workspace', extensions: ['ptw'] },
                             { name: 'All Files', extensions: ['*'] },
                         ]
                     });
@@ -164,7 +164,7 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
             if (!window.electron?.dialog?.saveFile || !getPlot()) return;
             try {
                 const path = await window.electron.dialog.saveFile({
-                    filters: [{ name: 'DataVis Workspace', extensions: ['ptw'] }]
+                    filters: [{ name: 'DataVisual Workspace', extensions: ['ptw'] }]
                 });
                 if (path) await writeWorkspaceTo(path);
             } catch (err) {
@@ -212,7 +212,7 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         const start = app.appliedStartDate || '(none)';
         const end = app.appliedEndDate || '(latest)';
         const lines = [
-            `DataVis chart: ${title}`,
+            `DataVisual chart: ${title}`,
             '',
             `Date range: ${start} -> ${end}`,
             `Series (${names.length}):`,
@@ -231,7 +231,7 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
     };
 
     const openMailto = (recipient = '') => {
-        const subject = encodeURIComponent(`DataVis chart: ${getApp().plotTitle || 'Plot'}`);
+        const subject = encodeURIComponent(`DataVisual chart: ${getApp().plotTitle || 'Plot'}`);
         const body = encodeURIComponent(buildPlotSummary());
         const url = `mailto:${recipient}?subject=${subject}&body=${body}`;
         // Use Electron's external opener if available; otherwise let the renderer handle it.
@@ -940,7 +940,7 @@ export function registerAllCommands(appStore, dataStore, plotStore) {
         handler: () => appStore.setState({ activeDialog: 'tipOfDay' })
     });
     commandRegistry.register('help.about', {
-        label: 'About DataVis...',
+        label: 'About DataVisual...',
         handler: () => appStore.setState({ activeDialog: 'about' })
     });
 }

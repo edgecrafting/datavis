@@ -94,7 +94,7 @@ const createWindow = () => {
         },
         autoHideMenuBar: true,
         frame: true,
-        title: 'DataVis',
+        title: 'DataVisual',
     });
     if (state.isMaximized) mainWindow.maximize();
 
@@ -327,7 +327,7 @@ ipcMain.handle('window:print-preview', async () => {
             printBackground: true,
             pageSize: 'Letter',
         });
-        const tmp = path.join(app.getPath('temp'), `datavis-preview-${Date.now()}.pdf`);
+        const tmp = path.join(app.getPath('temp'), `datavisual-preview-${Date.now()}.pdf`);
         await fs.promises.writeFile(tmp, buf);
         await shell.openPath(tmp);
         return tmp;
@@ -346,7 +346,7 @@ ipcMain.handle('shell:open-external-file', async (event, filePath) => {
 ipcMain.handle('fs:write-temp', async (event, filename, content) => {
     if (typeof content !== 'string') throw new Error('Content must be a string');
     if (content.length > MAX_FILE_SIZE) throw new Error('Content too large');
-    const safeName = String(filename || 'datavis-tmp.txt').replace(/[^A-Za-z0-9_.-]/g, '_');
+    const safeName = String(filename || 'datavisual-tmp.txt').replace(/[^A-Za-z0-9_.-]/g, '_');
     const tmp = path.join(app.getPath('temp'), `${Date.now()}-${safeName}`);
     await fs.promises.writeFile(tmp, content, 'utf-8');
     // Auto-allow this directory so future reads/writes work.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DataVis (project directory still named `Plottool/` for path stability) is an Electron + React desktop application for visualizing and analyzing Bloomberg financial time series data. It provides a file browser for CSV datasets, interactive Plotly charts, an expression evaluator for derived series, and financial statistics (AR, Vol, Sharpe, MaxDD). The UI uses a Windows 2000 retro aesthetic.
+DataVisual (project directory still named `Plottool/` for path stability; GitHub remote is `edgecrafting/datavis`) is an Electron + React desktop application for visualizing and analyzing Bloomberg financial time series data. It provides a file browser for CSV datasets, interactive Plotly charts, an expression evaluator for derived series, and financial statistics (AR, Vol, Sharpe, MaxDD). The UI uses a Windows 2000 retro aesthetic.
 
 ## Commands
 

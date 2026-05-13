@@ -419,7 +419,7 @@ export default function ChartView() {
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', height: '100%', color: '#888', background: '#fff'
             }}>
-                <div style={{ fontSize: '32px', opacity: 0.2, fontWeight: 'bold', marginBottom: '8px' }}>DATAVIS</div>
+                <div style={{ fontSize: '32px', opacity: 0.2, fontWeight: 'bold', marginBottom: '8px' }}>DATAVISUAL</div>
                 <div style={{ fontSize: '12px' }}>Double-click a .csv file or type an expression and press F9</div>
             </div>
         );

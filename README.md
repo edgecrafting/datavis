@@ -1,4 +1,4 @@
-# DataVis
+# DataVisual
 
 Electron + React desktop application for visualizing and analyzing Bloomberg financial time series data.
 
@@ -45,7 +45,7 @@ React 19, Vite 7, Electron 40, Zustand 5, Plotly.js, PapaParse, Vitest
 
 ## Expression Language
 
-DataVis evaluates one expression per line. Each line produces a series.
+DataVisual evaluates one expression per line. Each line produces a series.
 
 ### Operators
 
